@@ -557,14 +557,13 @@
 </header>
 
 <div class="tabs">
-  <div class="tab active" onclick="switchTab('setup')">⚙️ Setup</div>
-  <div class="tab" onclick="switchTab('record')">📅 Record</div>
+  <div class="tab active" onclick="switchTab('record')">📅 Record</div>
   <div class="tab" onclick="switchTab('sessions')">📋 Sessions</div>
   <div class="tab" onclick="switchTab('summary')">💰 Summary</div>
 </div>
 
 <!-- ===== SETUP PAGE ===== -->
-<div class="page active" id="page-setup">
+<div class="page" id="page-setup">
 
   <div class="config-steps">
     <h3>🔥 Firebase Setup (One-time, by admin)</h3>
@@ -607,7 +606,7 @@
 </div>
 
 <!-- ===== RECORD PAGE ===== -->
-<div class="page" id="page-record">
+<div class="page active" id="page-record">
 
   <div id="no-firebase-record" class="config-banner" style="display:none">
     ⚠️ Please complete Firebase setup first in the Setup tab.
@@ -629,10 +628,37 @@
     </div>
   </div>
 
-  <div class="section-title">Tap to mark who played</div>
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; margin-top:6px;">
+    <div class="section-title" style="margin:0;">Tap to mark who played</div>
+    <button class="btn btn-secondary btn-sm" onclick="toggleAddPlayer()" id="add-player-btn">+ Add Name</button>
+  </div>
+
+  <div id="add-player-panel" style="display:none; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px;">
+    <div style="display:flex; gap:8px;">
+      <input type="text" id="new-player-record" placeholder="Enter colleague name" style="margin-bottom:0; flex:1;" onkeydown="if(event.key==='Enter') addPlayerFromRecord()" />
+      <button class="btn btn-primary btn-sm" onclick="addPlayerFromRecord()">Add</button>
+    </div>
+    <div style="margin-top:10px;">
+      <div class="section-title" style="margin-bottom:8px;">Current players (tap × to remove)</div>
+      <div class="player-list" id="player-list-record"></div>
+    </div>
+  </div>
+
   <div class="players-grid" id="players-grid"></div>
 
-  <div class="rate-note">ℹ️ Rate: ₹<span id="rate-display-record">50</span>/player/hour. Each selected player will be charged for <span id="hours-note">1</span> hour(s).</div>
+  <div class="rate-note" style="flex-direction:column; gap:8px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+      <span>ℹ️ Rate: ₹<span id="rate-display-record">50</span>/player/hour &nbsp;·&nbsp; <span id="hours-note">1</span> hr(s)</span>
+      <button class="btn btn-secondary btn-sm" onclick="toggleRateEditor()" id="rate-edit-btn">✏️ Change</button>
+    </div>
+    <div id="rate-editor" style="display:none; display:none; width:100%;">
+      <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
+        <span style="font-size:13px; color:var(--text); white-space:nowrap;">₹ per player/hr:</span>
+        <input type="number" id="rate-input-record" min="1" style="margin-bottom:0; flex:1; padding:7px 10px;" />
+        <button class="btn btn-primary btn-sm" onclick="saveRateFromRecord()">Save</button>
+      </div>
+    </div>
+  </div>
 
   <button class="btn btn-primary btn-full" onclick="saveSession()" style="margin-bottom:12px;">
     ✅ Save Session
@@ -887,6 +913,76 @@ function renderPlayersGrid() {
   `).join('');
 }
 
+window.toggleAddPlayer = function() {
+  const panel = document.getElementById('add-player-panel');
+  const btn = document.getElementById('add-player-btn');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = isOpen ? '+ Add Name' : '✕ Close';
+  if (!isOpen) renderPlayerListRecord();
+};
+
+window.addPlayerFromRecord = async function() {
+  const inp = document.getElementById('new-player-record');
+  const name = inp.value.trim();
+  if (!name) return;
+  if (players.includes(name)) { showToast('Already added!', true); return; }
+  players.push(name);
+  inp.value = '';
+  saveLocalPlayers();
+  await pushPlayersToFirebase();
+  renderPlayers();
+  renderPlayerListRecord();
+  renderPlayersGrid();
+  showToast('Added ' + name);
+};
+
+function renderPlayerListRecord() {
+  const el = document.getElementById('player-list-record');
+  if (!el) return;
+  if (!players.length) { el.innerHTML = '<span style="color:var(--muted);font-size:13px;">No players yet</span>'; return; }
+  el.innerHTML = players.map(p => `
+    <div class="player-chip">
+      <span style="color:${colorFor(p)};font-weight:700;">${initials(p)}</span>
+      ${p}
+      <button onclick="removePlayerFromRecord('${p.replace(/'/g,"\\'")}')">×</button>
+    </div>
+  `).join('');
+}
+
+window.removePlayerFromRecord = async function(name) {
+  players = players.filter(p => p !== name);
+  selectedPlayers.delete(name);
+  saveLocalPlayers();
+  await pushPlayersToFirebase();
+  renderPlayers();
+  renderPlayerListRecord();
+  renderPlayersGrid();
+  showToast(name + ' removed');
+};
+
+window.toggleRateEditor = function() {
+  const editor = document.getElementById('rate-editor');
+  const btn = document.getElementById('rate-edit-btn');
+  const isOpen = editor.style.display === 'block';
+  editor.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = isOpen ? '✏️ Change' : '✕ Close';
+  if (!isOpen) document.getElementById('rate-input-record').value = rate;
+};
+
+window.saveRateFromRecord = function() {
+  const val = parseFloat(document.getElementById('rate-input-record').value);
+  if (!val || val < 1) { showToast('Enter a valid rate!', true); return; }
+  rate = val;
+  localStorage.setItem('rate', rate);
+  document.getElementById('rate-display-record').textContent = rate;
+  const setupInput = document.getElementById('rate-input');
+  if (setupInput) setupInput.value = rate;
+  document.getElementById('rate-editor').style.display = 'none';
+  document.getElementById('rate-edit-btn').textContent = '✏️ Change';
+  showToast('✅ Rate updated to ₹' + rate + '/hr');
+};
+
 window.togglePlayer = function(name) {
   if (selectedPlayers.has(name)) selectedPlayers.delete(name);
   else selectedPlayers.add(name);
@@ -1036,6 +1132,18 @@ window.switchTab = function(tab) {
 
 // ── INIT ──────────────────────────────────────────────────
 (async function init() {
+  // ── HARDCODED FIREBASE CONFIG ──────────────────────────
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyB2k6O_5EJNt9QeUG0xXFw4tc1CoKb5tMk",
+    authDomain: "badminton-attendance-tracker.firebaseapp.com",
+    projectId: "badminton-attendance-tracker",
+    storageBucket: "badminton-attendance-tracker.firebasestorage.app",
+    messagingSenderId: "1004212985506",
+    appId: "1:1004212985506:web:ca92db30fab1f3a0d041fb",
+    measurementId: "G-ZN3S7RLGN2"
+  };
+  localStorage.setItem('fbConfig', JSON.stringify(FIREBASE_CONFIG));
+
   // Set today's date
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('session-date').value = today;
@@ -1044,14 +1152,12 @@ window.switchTab = function(tab) {
   renderPlayers();
   renderPlayersGrid();
 
-  const cfg = loadLocalConfig();
+  const r = localStorage.getItem('rate');
+  if (r) { rate = parseFloat(r); document.getElementById('rate-input').value = rate; }
   document.getElementById('rate-display-record').textContent = rate;
 
   setFbStatus(false);
-
-  if (cfg && cfg.apiKey && cfg.projectId) {
-    await connectFirebase(cfg);
-  }
+  await connectFirebase(FIREBASE_CONFIG);
 })();
 </script>
 </body>
