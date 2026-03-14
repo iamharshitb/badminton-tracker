@@ -668,7 +668,10 @@
 
 <!-- ===== SESSIONS PAGE ===== -->
 <div class="page" id="page-sessions">
-  <div class="section-title">All Recorded Sessions</div>
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+    <div class="section-title" style="margin:0;">All Recorded Sessions</div>
+    <button class="btn btn-danger btn-sm" onclick="clearAllSessions()">🗑 Clear All</button>
+  </div>
   <div id="sessions-list"></div>
 </div>
 
@@ -1022,6 +1025,23 @@ window.saveSession = async function() {
     showToast('✅ Session saved!');
   } catch(e) {
     showToast('Error saving: ' + e.message, true);
+  }
+};
+
+// ── CLEAR ALL SESSIONS ────────────────────────────────────
+window.clearAllSessions = async function() {
+  if (!db) { showToast('Not connected to Firebase!', true); return; }
+  if (sessions.length === 0) { showToast('No sessions to clear!', true); return; }
+  const confirmed = confirm(`⚠️ This will permanently delete all ${sessions.length} session(s).\n\nPlayer names and rate will be kept.\n\nAre you sure?`);
+  if (!confirmed) return;
+  try {
+    const { getDocs, collection, deleteDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await getDocs(collection(db, 'sessions'));
+    const deletes = snap.docs.map(d => deleteDoc(doc(db, 'sessions', d.id)));
+    await Promise.all(deletes);
+    showToast('✅ All sessions cleared!');
+  } catch(e) {
+    showToast('Error: ' + e.message, true);
   }
 };
 
