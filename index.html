@@ -733,6 +733,7 @@ let sessionHours = 1;
 let selectedPlayers = new Set();
 let summaryMonth = new Date();
 let unsubscribeSessions = null;
+let unsubscribeRate = null;
 
 const COLORS = [
   "#39d353","#58a6ff","#f78166","#e3b341","#bc8cff",
@@ -791,6 +792,7 @@ async function connectFirebase(cfg) {
     await getDocs(collection(db, 'sessions'));
     setFbStatus(true);
     subscribeToSessions();
+    subscribeToRate();
     await syncPlayersFromFirebase();
     return true;
   } catch (e) {
@@ -842,7 +844,31 @@ function subscribeToSessions() {
   });
 }
 
-// ── SAVE CONFIG ───────────────────────────────────────────
+// ── RATE (realtime) ───────────────────────────────────────
+function subscribeToRate() {
+  if (!db) return;
+  if (unsubscribeRate) unsubscribeRate();
+  unsubscribeRate = onSnapshot(doc(db, 'config', 'rate'), snap => {
+    if (snap.exists()) {
+      const newRate = snap.data().value;
+      if (newRate && newRate !== rate) {
+        rate = newRate;
+        localStorage.setItem('rate', rate);
+        document.getElementById('rate-display-record').textContent = rate;
+        const setupInput = document.getElementById('rate-input');
+        if (setupInput) setupInput.value = rate;
+        renderSummary();
+      }
+    }
+  });
+}
+
+async function pushRateToFirebase() {
+  if (!db) return;
+  await setDoc(doc(db, 'config', 'rate'), { value: rate });
+}
+
+
 window.saveFirebaseConfig = async function() {
   const cfg = {
     apiKey: document.getElementById('cfg-apiKey').value.trim(),
@@ -973,7 +999,7 @@ window.toggleRateEditor = function() {
   if (!isOpen) document.getElementById('rate-input-record').value = rate;
 };
 
-window.saveRateFromRecord = function() {
+window.saveRateFromRecord = async function() {
   const val = parseFloat(document.getElementById('rate-input-record').value);
   if (!val || val < 1) { showToast('Enter a valid rate!', true); return; }
   rate = val;
@@ -983,7 +1009,9 @@ window.saveRateFromRecord = function() {
   if (setupInput) setupInput.value = rate;
   document.getElementById('rate-editor').style.display = 'none';
   document.getElementById('rate-edit-btn').textContent = '✏️ Change';
-  showToast('✅ Rate updated to ₹' + rate + '/hr');
+  await pushRateToFirebase();
+  renderSummary();
+  showToast('✅ Rate updated for everyone to ₹' + rate + '/hr');
 };
 
 window.togglePlayer = function(name) {
