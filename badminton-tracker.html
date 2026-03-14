@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>🏸 Badminton Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --card: #1c2333;
+    --border: #30363d;
+    --accent: #39d353;
+    --accent2: #58a6ff;
+    --warn: #f78166;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --gold: #e3b341;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 60px;
+  }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, #0d1117 0%, #1a2332 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 20px 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  header h1 span.shuttle { font-size: 26px; }
+  header p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .tab {
+    flex: 1;
+    min-width: 80px;
+    padding: 12px 8px;
+    text-align: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* PAGES */
+  .page { display: none; padding: 20px 16px; max-width: 480px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* SETUP PAGE */
+  .setup-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .setup-card h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    color: var(--accent2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  input[type="text"], input[type="number"], input[type="date"], input[type="time"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 12px;
+  }
+  input:focus { border-color: var(--accent2); }
+
+  .player-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .player-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px 5px 12px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: popIn 0.2s ease;
+  }
+  @keyframes popIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .player-chip button {
+    background: none;
+    border: none;
+    color: var(--warn);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+  }
+  .btn-primary { background: var(--accent); color: #0d1117; }
+  .btn-primary:hover { background: #4ae867; transform: translateY(-1px); }
+  .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--card); }
+  .btn-danger { background: transparent; color: var(--warn); border: 1px solid var(--warn); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-full { width: 100%; }
+
+  /* RECORD PAGE */
+  .date-strip {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .date-strip h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+  .date-row { display: flex; gap: 8px; align-items: flex-end; }
+  .date-row input { margin-bottom: 0; flex: 1; }
+
+  .hours-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .hours-row label { margin: 0; white-space: nowrap; font-size: 13px; color: var(--text); }
+  .hours-counter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+  }
+  .hours-counter button {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 20px;
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .hours-counter span {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--gold);
+    min-width: 20px;
+    text-align: center;
+  }
+
+  .players-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .player-toggle {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .player-toggle:active { transform: scale(0.96); }
+  .player-toggle.selected {
+    border-color: var(--accent);
+    background: rgba(57, 211, 83, 0.1);
+  }
+  .player-toggle .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    margin: 0 auto 8px;
+    transition: all 0.2s;
+  }
+  .player-toggle .name {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .player-toggle .check {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .player-toggle.selected .check { opacity: 1; }
+  .player-toggle.selected .avatar { transform: scale(1.05); }
+
+  /* SESSIONS LOG */
+  .session-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .session-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .session-date {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .session-hours {
+    background: var(--gold);
+    color: #0d1117;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .session-players { display: flex; flex-wrap: wrap; gap: 6px; }
+  .mini-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .session-delete {
+    background: none;
+    border: none;
+    color: var(--border);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px 4px;
+    transition: color 0.15s;
+  }
+  .session-delete:hover { color: var(--warn); }
+
+  /* SUMMARY PAGE */
+  .month-selector {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .month-selector button {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 16px;
+    font-family: 'Syne', sans-serif;
+    transition: background 0.15s;
+  }
+  .month-selector button:hover { background: var(--surface); }
+  .month-selector span {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+  }
+
+  .summary-stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .summary-stat .label { font-size: 13px; color: var(--muted); }
+  .summary-stat .value {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+
+  .dues-list {}
+  .due-row {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.2s ease;
+  }
+  .due-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  .due-info { flex: 1; }
+  .due-name { font-weight: 500; font-size: 14px; }
+  .due-hours { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .due-amount {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--gold);
+  }
+  .due-amount span { font-size: 11px; color: var(--muted); display: block; text-align: right; }
+
+  .no-data {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .no-data .icon { font-size: 40px; margin-bottom: 10px; }
+
+  /* CONFIG BANNER */
+  .config-banner {
+    background: rgba(248, 129, 102, 0.1);
+    border: 1px solid var(--warn);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--warn);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* TOAST */
+  #toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--accent);
+    color: #0d1117;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 999;
+    white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* FIREBASE CONFIG PAGE */
+  .config-steps {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .config-steps h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent2);
+    margin-bottom: 12px;
+  }
+  .step {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .step-num {
+    background: var(--accent2);
+    color: #0d1117;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step a { color: var(--accent2); }
+  code {
+    background: var(--bg);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--gold);
+    font-family: monospace;
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 10px;
+    margin-top: 6px;
+  }
+
+  /* FIREBASE STATUS */
+  .fb-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .fb-status.connected { background: rgba(57,211,83,0.15); color: var(--accent); }
+  .fb-status.disconnected { background: rgba(247,129,102,0.15); color: var(--warn); }
+  .fb-status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .rate-note {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 16px;
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="shuttle">🏸</span> Badminton Tracker</h1>
+  <p id="fb-status-header">Setting up...</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('setup')">⚙️ Setup</div>
+  <div class="tab" onclick="switchTab('record')">📅 Record</div>
+  <div class="tab" onclick="switchTab('sessions')">📋 Sessions</div>
+  <div class="tab" onclick="switchTab('summary')">💰 Summary</div>
+</div>
+
+<!-- ===== SETUP PAGE ===== -->
+<div class="page active" id="page-setup">
+
+  <div class="config-steps">
+    <h3>🔥 Firebase Setup (One-time, by admin)</h3>
+    <div class="step"><span class="step-num">1</span><div>Go to <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> → Create a new project (e.g. "Badminton Tracker")</div></div>
+    <div class="step"><span class="step-num">2</span><div>In your project → Click <code>Firestore Database</code> → Create database → Start in <strong>test mode</strong></div></div>
+    <div class="step"><span class="step-num">3</span><div>Go to <code>Project Settings</code> (gear icon) → <code>Your apps</code> → Add a Web App → Copy the <code>firebaseConfig</code> object</div></div>
+    <div class="step"><span class="step-num">4</span><div>Paste the config values in the fields below and click <strong>Save Firebase Config</strong></div></div>
+    <div class="step"><span class="step-num">5</span><div>Share this HTML file (or host it on <a href="https://pages.github.com" target="_blank">GitHub Pages</a>) with your colleagues — everyone uses the same file/link!</div></div>
+  </div>
+
+  <div class="setup-card">
+    <h2>🔥 Firebase Config</h2>
+    <label>API Key</label>
+    <input type="text" id="cfg-apiKey" placeholder="AIzaSy..." />
+    <label>Auth Domain</label>
+    <input type="text" id="cfg-authDomain" placeholder="your-project.firebaseapp.com" />
+    <label>Project ID</label>
+    <input type="text" id="cfg-projectId" placeholder="your-project-id" />
+    <label>App ID</label>
+    <input type="text" id="cfg-appId" placeholder="1:123456:web:abc..." />
+    <button class="btn btn-primary btn-full" onclick="saveFirebaseConfig()">💾 Save Firebase Config & Connect</button>
+  </div>
+
+  <div class="setup-card">
+    <h2>👥 Manage Players</h2>
+    <div style="display:flex; gap:8px; margin-bottom:12px;">
+      <input type="text" id="new-player" placeholder="Colleague name" style="margin-bottom:0; flex:1;" onkeydown="if(event.key==='Enter') addPlayer()" />
+      <button class="btn btn-secondary" onclick="addPlayer()">+ Add</button>
+    </div>
+    <div class="player-list" id="player-list"></div>
+  </div>
+
+  <div class="setup-card">
+    <h2>💵 Rate Settings</h2>
+    <label>Rate per player per hour (₹)</label>
+    <input type="number" id="rate-input" value="50" min="1" />
+    <button class="btn btn-primary btn-sm" onclick="saveRate()">Save Rate</button>
+  </div>
+
+</div>
+
+<!-- ===== RECORD PAGE ===== -->
+<div class="page" id="page-record">
+
+  <div id="no-firebase-record" class="config-banner" style="display:none">
+    ⚠️ Please complete Firebase setup first in the Setup tab.
+  </div>
+
+  <div class="date-strip">
+    <h2>📅 Session Date & Duration</h2>
+    <div class="date-row">
+      <input type="date" id="session-date" />
+    </div>
+    <div class="hours-row">
+      <label>Hours played:</label>
+      <div class="hours-counter">
+        <button onclick="changeHours(-0.5)">−</button>
+        <span id="hours-display">1</span>
+        <button onclick="changeHours(0.5)">+</button>
+      </div>
+      <span style="font-size:12px; color:var(--muted)">hrs</span>
+    </div>
+  </div>
+
+  <div class="section-title">Tap to mark who played</div>
+  <div class="players-grid" id="players-grid"></div>
+
+  <div class="rate-note">ℹ️ Rate: ₹<span id="rate-display-record">50</span>/player/hour. Each selected player will be charged for <span id="hours-note">1</span> hour(s).</div>
+
+  <button class="btn btn-primary btn-full" onclick="saveSession()" style="margin-bottom:12px;">
+    ✅ Save Session
+  </button>
+
+</div>
+
+<!-- ===== SESSIONS PAGE ===== -->
+<div class="page" id="page-sessions">
+  <div class="section-title">All Recorded Sessions</div>
+  <div id="sessions-list"></div>
+</div>
+
+<!-- ===== SUMMARY PAGE ===== -->
+<div class="page" id="page-summary">
+  <div class="month-selector">
+    <button onclick="changeMonth(-1)">‹</button>
+    <span id="month-label">Loading...</span>
+    <button onclick="changeMonth(1)">›</button>
+  </div>
+
+  <div id="summary-stats" style="display:flex; gap:10px; margin-bottom:16px;">
+    <div class="summary-stat" style="flex:1; margin-bottom:0;">
+      <div>
+        <div class="label">Sessions</div>
+        <div class="value" id="stat-sessions">0</div>
+      </div>
+      <span style="font-size:24px;">🏸</span>
+    </div>
+    <div class="summary-stat" style="flex:1; margin-bottom:0;">
+      <div>
+        <div class="label">Total Hours</div>
+        <div class="value" id="stat-hours">0</div>
+      </div>
+      <span style="font-size:24px;">⏰</span>
+    </div>
+  </div>
+
+  <div class="section-title">💰 Due Amounts</div>
+  <div id="dues-list"></div>
+</div>
+
+<div id="toast">Saved!</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  deleteDoc,
+  doc,
+  setDoc,
+  getDoc,
+  onSnapshot,
+  query,
+  orderBy
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ── GLOBALS ─────────────────────────────────────────────
+let db = null;
+let firebaseApp = null;
+let players = [];
+let sessions = [];
+let rate = 50;
+let sessionHours = 1;
+let selectedPlayers = new Set();
+let summaryMonth = new Date();
+let unsubscribeSessions = null;
+
+const COLORS = [
+  "#39d353","#58a6ff","#f78166","#e3b341","#bc8cff",
+  "#79c0ff","#ffa657","#7ee787","#ff7b72","#d2a8ff"
+];
+
+// ── UTILS ────────────────────────────────────────────────
+function initials(name) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+function colorFor(name) {
+  let h = 0;
+  for (let c of name) h = (h * 31 + c.charCodeAt(0)) & 0xFFFFFF;
+  return COLORS[Math.abs(h) % COLORS.length];
+}
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isError ? 'var(--warn)' : 'var(--accent)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+function fmtDate(d) {
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+}
+
+// ── LOCAL STORAGE (config + players + rate) ──────────────
+function loadLocalConfig() {
+  const cfg = JSON.parse(localStorage.getItem('fbConfig') || 'null');
+  if (cfg) {
+    document.getElementById('cfg-apiKey').value = cfg.apiKey || '';
+    document.getElementById('cfg-authDomain').value = cfg.authDomain || '';
+    document.getElementById('cfg-projectId').value = cfg.projectId || '';
+    document.getElementById('cfg-appId').value = cfg.appId || '';
+  }
+  const r = localStorage.getItem('rate');
+  if (r) { rate = parseFloat(r); document.getElementById('rate-input').value = rate; }
+  return cfg;
+}
+
+function loadLocalPlayers() {
+  players = JSON.parse(localStorage.getItem('players') || '[]');
+}
+
+function saveLocalPlayers() {
+  localStorage.setItem('players', JSON.stringify(players));
+}
+
+// ── FIREBASE ─────────────────────────────────────────────
+async function connectFirebase(cfg) {
+  try {
+    if (firebaseApp) { /* already init */ }
+    else { firebaseApp = initializeApp(cfg, 'badminton-app'); }
+    db = getFirestore(firebaseApp);
+    // test connection
+    await getDocs(collection(db, 'sessions'));
+    setFbStatus(true);
+    subscribeToSessions();
+    await syncPlayersFromFirebase();
+    return true;
+  } catch (e) {
+    console.error(e);
+    setFbStatus(false);
+    return false;
+  }
+}
+
+function setFbStatus(ok) {
+  const el = document.getElementById('fb-status-header');
+  el.innerHTML = ok
+    ? '<span class="fb-status connected"><span class="fb-status-dot"></span>Firebase Connected</span>'
+    : '<span class="fb-status disconnected"><span class="fb-status-dot"></span>Not Connected</span>';
+  document.getElementById('no-firebase-record').style.display = ok ? 'none' : 'flex';
+}
+
+// ── PLAYERS (stored in Firestore + local) ─────────────────
+async function syncPlayersFromFirebase() {
+  if (!db) return;
+  try {
+    const snap = await getDoc(doc(db, 'config', 'players'));
+    if (snap.exists()) {
+      players = snap.data().list || [];
+      saveLocalPlayers();
+    } else {
+      // push local players to firebase
+      if (players.length) await pushPlayersToFirebase();
+    }
+  } catch(e) {}
+  renderPlayers();
+  renderPlayersGrid();
+}
+
+async function pushPlayersToFirebase() {
+  if (!db) return;
+  await setDoc(doc(db, 'config', 'players'), { list: players });
+}
+
+// ── SESSIONS (realtime) ───────────────────────────────────
+function subscribeToSessions() {
+  if (!db) return;
+  if (unsubscribeSessions) unsubscribeSessions();
+  const q = query(collection(db, 'sessions'), orderBy('date', 'desc'));
+  unsubscribeSessions = onSnapshot(q, snap => {
+    sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderSessionsList();
+    renderSummary();
+  });
+}
+
+// ── SAVE CONFIG ───────────────────────────────────────────
+window.saveFirebaseConfig = async function() {
+  const cfg = {
+    apiKey: document.getElementById('cfg-apiKey').value.trim(),
+    authDomain: document.getElementById('cfg-authDomain').value.trim(),
+    projectId: document.getElementById('cfg-projectId').value.trim(),
+    appId: document.getElementById('cfg-appId').value.trim(),
+    storageBucket: document.getElementById('cfg-projectId').value.trim() + '.appspot.com',
+    messagingSenderId: '000000000000'
+  };
+  if (!cfg.apiKey || !cfg.projectId) { showToast('Please fill API Key and Project ID', true); return; }
+  localStorage.setItem('fbConfig', JSON.stringify(cfg));
+  const ok = await connectFirebase(cfg);
+  if (ok) showToast('🔥 Firebase connected!');
+  else showToast('❌ Connection failed — check config', true);
+};
+
+window.saveRate = function() {
+  rate = parseFloat(document.getElementById('rate-input').value) || 50;
+  localStorage.setItem('rate', rate);
+  document.getElementById('rate-display-record').textContent = rate;
+  showToast('Rate saved: ₹' + rate + '/hr');
+};
+
+// ── PLAYERS MANAGEMENT ────────────────────────────────────
+window.addPlayer = async function() {
+  const inp = document.getElementById('new-player');
+  const name = inp.value.trim();
+  if (!name) return;
+  if (players.includes(name)) { showToast('Already added!', true); return; }
+  players.push(name);
+  inp.value = '';
+  saveLocalPlayers();
+  await pushPlayersToFirebase();
+  renderPlayers();
+  renderPlayersGrid();
+  showToast('Added ' + name);
+};
+
+window.removePlayer = async function(name) {
+  players = players.filter(p => p !== name);
+  saveLocalPlayers();
+  await pushPlayersToFirebase();
+  renderPlayers();
+  renderPlayersGrid();
+};
+
+function renderPlayers() {
+  const el = document.getElementById('player-list');
+  if (!players.length) { el.innerHTML = '<span style="color:var(--muted);font-size:13px;">No players yet</span>'; return; }
+  el.innerHTML = players.map(p => `
+    <div class="player-chip">
+      <span style="color:${colorFor(p)};font-weight:700;">${initials(p)}</span>
+      ${p}
+      <button onclick="removePlayer('${p.replace(/'/g,"\\'")}')">×</button>
+    </div>
+  `).join('');
+}
+
+function renderPlayersGrid() {
+  const el = document.getElementById('players-grid');
+  if (!players.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;grid-column:span 2;padding:20px 0;">Add players in the Setup tab first.</div>';
+    return;
+  }
+  el.innerHTML = players.map(p => `
+    <div class="player-toggle ${selectedPlayers.has(p) ? 'selected' : ''}" onclick="togglePlayer('${p.replace(/'/g,"\\'")}')">
+      <div class="avatar" style="background:${colorFor(p)}22; color:${colorFor(p)}">${initials(p)}</div>
+      <div class="name">${p}</div>
+      <div class="check">✅</div>
+    </div>
+  `).join('');
+}
+
+window.togglePlayer = function(name) {
+  if (selectedPlayers.has(name)) selectedPlayers.delete(name);
+  else selectedPlayers.add(name);
+  renderPlayersGrid();
+  updateHoursNote();
+};
+
+// ── HOURS COUNTER ─────────────────────────────────────────
+window.changeHours = function(delta) {
+  sessionHours = Math.max(0.5, Math.round((sessionHours + delta) * 2) / 2);
+  document.getElementById('hours-display').textContent = sessionHours;
+  updateHoursNote();
+};
+
+function updateHoursNote() {
+  document.getElementById('hours-note').textContent = sessionHours;
+}
+
+// ── SAVE SESSION ──────────────────────────────────────────
+window.saveSession = async function() {
+  if (!db) { showToast('Connect Firebase first!', true); return; }
+  const dateVal = document.getElementById('session-date').value;
+  if (!dateVal) { showToast('Pick a date first!', true); return; }
+  if (selectedPlayers.size === 0) { showToast('Select at least one player!', true); return; }
+
+  const sessionData = {
+    date: dateVal,
+    hours: sessionHours,
+    players: [...selectedPlayers],
+    createdAt: new Date().toISOString()
+  };
+
+  try {
+    await addDoc(collection(db, 'sessions'), sessionData);
+    selectedPlayers.clear();
+    renderPlayersGrid();
+    showToast('✅ Session saved!');
+  } catch(e) {
+    showToast('Error saving: ' + e.message, true);
+  }
+};
+
+// ── DELETE SESSION ────────────────────────────────────────
+window.deleteSession = async function(id) {
+  if (!db) return;
+  if (!confirm('Delete this session?')) return;
+  try {
+    await deleteDoc(doc(db, 'sessions', id));
+    showToast('Session deleted');
+  } catch(e) {
+    showToast('Error: ' + e.message, true);
+  }
+};
+
+// ── RENDER SESSIONS ───────────────────────────────────────
+function renderSessionsList() {
+  const el = document.getElementById('sessions-list');
+  if (!sessions.length) {
+    el.innerHTML = '<div class="no-data"><div class="icon">📭</div>No sessions recorded yet.<br>Go to Record tab to add one!</div>';
+    return;
+  }
+  el.innerHTML = sessions.map(s => `
+    <div class="session-card">
+      <div class="session-header">
+        <div class="session-date">${fmtDate(s.date)}</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="session-hours">${s.hours}h</div>
+          <button class="session-delete" onclick="deleteSession('${s.id}')">🗑</button>
+        </div>
+      </div>
+      <div class="session-players">
+        ${(s.players||[]).map(p => `<div class="mini-chip" style="border-color:${colorFor(p)}44;color:${colorFor(p)}">${p}</div>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── SUMMARY ───────────────────────────────────────────────
+let summaryMonthOffset = 0;
+
+window.changeMonth = function(delta) {
+  summaryMonthOffset += delta;
+  renderSummary();
+};
+
+function renderSummary() {
+  const now = new Date();
+  const target = new Date(now.getFullYear(), now.getMonth() + summaryMonthOffset, 1);
+  const yr = target.getFullYear();
+  const mo = target.getMonth();
+
+  document.getElementById('month-label').textContent =
+    target.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
+  const monthSessions = sessions.filter(s => {
+    const d = new Date(s.date + 'T00:00:00');
+    return d.getFullYear() === yr && d.getMonth() === mo;
+  });
+
+  const totalHours = monthSessions.reduce((a, s) => a + (s.hours || 0), 0);
+  document.getElementById('stat-sessions').textContent = monthSessions.length;
+  document.getElementById('stat-hours').textContent = totalHours;
+
+  // calculate dues per player
+  const dues = {};
+  for (const s of monthSessions) {
+    for (const p of (s.players || [])) {
+      if (!dues[p]) dues[p] = 0;
+      dues[p] += s.hours || 0;
+    }
+  }
+
+  const el = document.getElementById('dues-list');
+  const entries = Object.entries(dues).sort((a, b) => b[1] - a[1]);
+
+  if (!entries.length) {
+    el.innerHTML = '<div class="no-data"><div class="icon">💸</div>No sessions this month yet.</div>';
+    return;
+  }
+
+  el.innerHTML = entries.map(([name, hours]) => {
+    const amount = Math.round(hours * rate);
+    return `
+      <div class="due-row">
+        <div class="due-avatar" style="background:${colorFor(name)}22;color:${colorFor(name)}">${initials(name)}</div>
+        <div class="due-info">
+          <div class="due-name">${name}</div>
+          <div class="due-hours">${hours} hour${hours !== 1 ? 's' : ''} played · ₹${rate}/hr</div>
+        </div>
+        <div class="due-amount">
+          ₹${amount}
+          <span>DUE</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── TABS ──────────────────────────────────────────────────
+window.switchTab = function(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+  document.getElementById('page-' + tab).classList.add('active');
+  if (tab === 'summary') renderSummary();
+};
+
+// ── INIT ──────────────────────────────────────────────────
+(async function init() {
+  // Set today's date
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('session-date').value = today;
+
+  loadLocalPlayers();
+  renderPlayers();
+  renderPlayersGrid();
+
+  const cfg = loadLocalConfig();
+  document.getElementById('rate-display-record').textContent = rate;
+
+  setFbStatus(false);
+
+  if (cfg && cfg.apiKey && cfg.projectId) {
+    await connectFirebase(cfg);
+  }
+})();
+</script>
+</body>
+</html>
