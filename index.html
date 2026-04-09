@@ -926,14 +926,28 @@
 </head>
 <body>
 
+<!-- WHO ARE YOU MODAL -->
+<div id="identity-overlay" style="display:none; position:fixed; inset:0; background:rgba(13,17,23,0.97); z-index:500; flex-direction:column; align-items:center; justify-content:center; padding:24px;">
+  <div style="max-width:360px; width:100%; text-align:center;">
+    <div style="font-size:48px; margin-bottom:12px;">🏸</div>
+    <div style="font-family:'Syne',sans-serif; font-size:22px; font-weight:800; margin-bottom:6px;">Who are you?</div>
+    <div style="font-size:14px; color:var(--muted); margin-bottom:24px; line-height:1.5;">Select your name so the app knows who's using this device. You only need to do this once.</div>
+    <div id="identity-player-list" style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;"></div>
+    <p style="font-size:12px; color:var(--muted);">Your name will be saved on this device only.</p>
+  </div>
+</div>
+
 <header>
-  <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
     <div>
       <h1><span class="shuttle">🏸</span> Badminton Tracker</h1>
       <p id="fb-status-header">Setting up...</p>
     </div>
-    <div style="text-align:right;">
-      <img src="https://visitor-badge.laobi.icu/badge?page_id=badminton.tracker.app&left_color=%2330363d&right_color=%2339d353&left_text=👁%20Visits" alt="Visitor Count" style="border-radius:6px; margin-top:4px;" />
+    <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+      <img src="https://visitor-badge.laobi.icu/badge?page_id=badminton.tracker.app&left_color=%2330363d&right_color=%2339d353&left_text=👁%20Visits" alt="Visitor Count" style="border-radius:6px;" />
+      <div id="identity-badge" style="display:none; background:rgba(88,166,255,0.15); border:1px solid rgba(88,166,255,0.3); border-radius:20px; padding:3px 10px; font-size:11px; font-weight:700; color:var(--accent2); cursor:pointer;" onclick="changeIdentity()" title="Tap to change">
+        👤 <span id="identity-name-badge">—</span>
+      </div>
     </div>
   </div>
 </header>
@@ -1273,12 +1287,12 @@ async function syncPlayersFromFirebase() {
       players = snap.data().list || [];
       saveLocalPlayers();
     } else {
-      // push local players to firebase
       if (players.length) await pushPlayersToFirebase();
     }
   } catch(e) {}
   renderPlayers();
   renderPlayersGrid();
+  checkIdentity();
 }
 
 async function pushPlayersToFirebase() {
@@ -1664,7 +1678,62 @@ window.switchTab = function(tab) {
   await connectFirebase(FIREBASE_CONFIG);
 })();
 
-// ── 1v1 RIVALRY ──────────────────────────────────────────
+// ── IDENTITY ──────────────────────────────────────────────
+function showIdentityOverlay() {
+  const overlay = document.getElementById('identity-overlay');
+  overlay.style.display = 'flex';
+  const el = document.getElementById('identity-player-list');
+  if (!players.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;">No players added yet. Ask your admin to add players first.</p>';
+    return;
+  }
+  el.innerHTML = players.map(p => `
+    <button onclick="setIdentity('${p.replace(/'/g,"\\'")}'))" style="
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:14px;
+      color:var(--text);
+      font-family:'DM Sans',sans-serif;
+      font-size:15px;
+      font-weight:600;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      transition:all 0.15s;
+      width:100%;
+    " onmouseover="this.style.borderColor='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="width:36px;height:36px;border-radius:50%;background:${colorFor(p)}22;color:${colorFor(p)};display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:13px;flex-shrink:0;">${initials(p)}</div>
+      ${p}
+    </button>
+  `).join('');
+}
+
+window.setIdentity = function(name) {
+  localStorage.setItem('badminton_identity', name);
+  document.getElementById('identity-overlay').style.display = 'none';
+  document.getElementById('identity-badge').style.display = 'flex';
+  document.getElementById('identity-name-badge').textContent = name;
+  renderMatchLists();
+};
+
+window.changeIdentity = function() {
+  showIdentityOverlay();
+};
+
+function checkIdentity() {
+  const saved = localStorage.getItem('badminton_identity');
+  if (saved && players.includes(saved)) {
+    document.getElementById('identity-badge').style.display = 'flex';
+    document.getElementById('identity-name-badge').textContent = saved;
+  } else if (players.length > 0) {
+    // Only show if players are loaded
+    showIdentityOverlay();
+  }
+}
+
+
 let matches = [];
 let unsubscribeMatches = null;
 
@@ -1742,6 +1811,7 @@ window.deleteMatch = async function(id) {
 };
 
 function renderMatchLists() {
+  const currentUser = localStorage.getItem('badminton_identity') || '';
   const pending   = matches.filter(m => !m.confirmed);
   const confirmed = matches.filter(m => m.confirmed).slice(0, 15);
 
@@ -1749,7 +1819,16 @@ function renderMatchLists() {
   if (!pending.length) {
     pel.innerHTML = '<div class="no-data" style="padding:16px 0;"><div class="icon" style="font-size:28px;">✅</div>No pending matches</div>';
   } else {
-    pel.innerHTML = pending.map(m => `
+    pel.innerHTML = pending.map(m => {
+      const isInMatch = currentUser === m.p1 || currentUser === m.p2;
+      const isOpponent = isInMatch && currentUser !== m.loggedBy;
+      // Confirm button: only visible to the opponent (the one who didn't log it)
+      const confirmBtn = isOpponent
+        ? `<button class="confirm-btn" onclick="confirmMatch('${m.id}')">✅ Confirm Result</button>`
+        : isInMatch
+          ? `<span style="font-size:11px;color:var(--muted);">Waiting for opponent</span>`
+          : `<span style="font-size:11px;color:var(--muted);">Awaiting confirmation</span>`;
+      return `
       <div class="match-card">
         <div class="match-card-top">
           <div class="match-date">${fmtDate(m.date)}</div>
@@ -1771,9 +1850,10 @@ function renderMatchLists() {
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div class="match-winner-tag">Winner: <span>${m.winner}</span></div>
-          <button class="confirm-btn" onclick="confirmMatch('${m.id}')">✅ Confirm Result</button>
+          ${confirmBtn}
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   const cel = document.getElementById('confirmed-matches');
