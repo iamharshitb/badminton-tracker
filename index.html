@@ -927,15 +927,17 @@
 <body>
 
 <!-- WHO ARE YOU MODAL -->
-<div id="identity-overlay" style="display:none; position:fixed; inset:0; background:rgba(13,17,23,0.98); z-index:500; flex-direction:column; align-items:center; justify-content:flex-start; overflow-y:auto; padding:40px 20px 40px;">
-  <div style="max-width:360px; width:100%;">
-    <div style="text-align:center; margin-bottom:28px;">
-      <div style="font-size:48px; margin-bottom:12px;">🏸</div>
-      <div style="font-family:'Syne',sans-serif; font-size:24px; font-weight:800; color:var(--text); margin-bottom:8px;">Who are you?</div>
-      <div style="font-size:14px; color:var(--muted); line-height:1.6;">Select your name from the list below.<br>This device will remember you.</div>
+<div id="identity-overlay" style="display:none; position:fixed; inset:0; background:#0d1117; z-index:500;">
+  <div style="height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:40px 20px 60px;">
+    <div style="max-width:360px; margin:0 auto;">
+      <div style="text-align:center; margin-bottom:28px;">
+        <div style="font-size:48px; margin-bottom:12px;">🏸</div>
+        <div style="font-family:'Syne',sans-serif; font-size:24px; font-weight:800; color:#e6edf3; margin-bottom:8px;">Who are you?</div>
+        <div style="font-size:14px; color:#8b949e; line-height:1.6;">Tap your name below.<br>This device will remember you.</div>
+      </div>
+      <div id="identity-player-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+      <p style="font-size:11px; color:#8b949e; text-align:center; line-height:1.6; margin-top:24px;">You can change this anytime by tapping your name in the top right corner.</p>
     </div>
-    <div id="identity-player-list" style="display:flex; flex-direction:column; gap:10px; margin-bottom:24px;"></div>
-    <p style="font-size:11px; color:var(--muted); text-align:center; line-height:1.6;">You can change this anytime by tapping your name badge in the top right corner.</p>
   </div>
 </div>
 
@@ -1683,20 +1685,19 @@ window.switchTab = function(tab) {
 // ── IDENTITY ──────────────────────────────────────────────
 function showIdentityOverlay() {
   const overlay = document.getElementById('identity-overlay');
-  overlay.style.display = 'flex';
+  overlay.style.display = 'block';
   const el = document.getElementById('identity-player-list');
   if (!players.length) {
-    el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0;">No players added yet.<br>Ask your admin to add players first.</p>';
+    el.innerHTML = '<p style="color:#8b949e;font-size:13px;text-align:center;padding:20px 0;">No players added yet.<br>Ask your admin to add players first.</p>';
     return;
   }
   el.innerHTML = players.map(p => `
     <div onclick="setIdentity('${p.replace(/'/g,"\\'")}'))"
-      style="background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:12px;transition:border-color 0.15s;"
-      onmouseover="this.style.borderColor=getComputedStyle(document.documentElement).getPropertyValue('--accent2')"
-      onmouseout="this.style.borderColor=getComputedStyle(document.documentElement).getPropertyValue('--border')"
+      style="background:#1c2333; border:1.5px solid #30363d; border-radius:12px; padding:16px; color:#e6edf3; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:12px; width:100%;"
     >
-      <div style="width:40px;height:40px;border-radius:50%;background:${colorFor(p)}22;color:${colorFor(p)};display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;flex-shrink:0;">${initials(p)}</div>
+      <div style="width:42px; height:42px; border-radius:50%; background:${colorFor(p)}22; color:${colorFor(p)}; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:14px; flex-shrink:0;">${initials(p)}</div>
       <span>${p}</span>
+      <span style="margin-left:auto; font-size:18px; color:#30363d;">›</span>
     </div>
   `).join('');
 }
