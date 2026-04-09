@@ -547,19 +547,402 @@
     gap: 6px;
     align-items: flex-start;
   }
+
+  /* ── 1v1 RIVALRY TRACKER ── */
+  .rivalry-sub-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .rivalry-sub-tab {
+    flex: 1;
+    padding: 8px;
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .rivalry-sub-tab.active {
+    background: rgba(88,166,255,0.15);
+    border-color: var(--accent2);
+    color: var(--accent2);
+  }
+
+  /* LOG MATCH FORM */
+  .match-form {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .match-form h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent2);
+    margin-bottom: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .vs-selector {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .vs-badge {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--muted);
+    text-align: center;
+  }
+  .player-select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 10px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    text-align: center;
+  }
+  .player-select:focus { border-color: var(--accent2); }
+
+  .score-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .score-input {
+    width: 100%;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    color: var(--gold);
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .score-input:focus { border-color: var(--gold); }
+  .score-dash {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--muted);
+    text-align: center;
+  }
+  .pending-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(227,179,65,0.15);
+    border: 1px solid rgba(227,179,65,0.3);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gold);
+  }
+  .confirmed-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(57,211,83,0.12);
+    border: 1px solid rgba(57,211,83,0.3);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  /* MATCH HISTORY CARDS */
+  .match-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    animation: slideIn 0.25s ease;
+  }
+  .match-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .match-date {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .match-scoreline {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .match-player {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .match-player-name {
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100px;
+  }
+  .match-player-score {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 1;
+  }
+  .match-player-score.winner { color: var(--accent); }
+  .match-player-score.loser { color: var(--muted); }
+  .match-vs {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--muted);
+    text-align: center;
+  }
+  .match-winner-tag {
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--muted);
+  }
+  .match-winner-tag span { color: var(--accent); }
+  .confirm-btn {
+    background: rgba(57,211,83,0.12);
+    border: 1px solid rgba(57,211,83,0.3);
+    color: var(--accent);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    transition: all 0.15s;
+  }
+  .confirm-btn:hover { background: rgba(57,211,83,0.25); }
+
+  /* LEADERBOARD */
+  .leaderboard-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .lb-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .lb-row:last-child { border-bottom: none; }
+  .lb-row:hover { background: var(--surface); }
+  .lb-rank {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .lb-rank.gold { color: #FFD700; }
+  .lb-rank.silver { color: #C0C0C0; }
+  .lb-rank.bronze { color: #CD7F32; }
+  .lb-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  .lb-info { flex: 1; min-width: 0; }
+  .lb-name { font-size: 14px; font-weight: 600; }
+  .lb-record { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .lb-winpct {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  .lb-bar-wrap {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 5px;
+  }
+  .lb-bar {
+    height: 4px;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  /* H2H TABLE */
+  .h2h-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .h2h-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .h2h-filter {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .h2h-filter select {
+    flex: 1;
+    min-width: 120px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+  }
+  .h2h-result {
+    padding: 16px;
+  }
+  .h2h-matchup {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .h2h-player {
+    text-align: center;
+  }
+  .h2h-player-name {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .h2h-player-wins {
+    font-family: 'Syne', sans-serif;
+    font-size: 32px;
+    font-weight: 900;
+    line-height: 1;
+  }
+  .h2h-player-wins.leading { color: var(--accent); }
+  .h2h-player-wins.trailing { color: var(--muted); }
+  .h2h-player-wins.tied { color: var(--gold); }
+  .h2h-divider {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--muted);
+    text-align: center;
+  }
+  .h2h-matches-label {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .h2h-mini-match {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+  .h2h-mini-score {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--gold);
+  }
 </style>
+<!-- Google Analytics - Replace GA_MEASUREMENT_ID with your actual ID -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'GA_MEASUREMENT_ID');
+</script>
 </head>
 <body>
 
 <header>
-  <h1><span class="shuttle">🏸</span> Badminton Tracker</h1>
-  <p id="fb-status-header">Setting up...</p>
+  <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+    <div>
+      <h1><span class="shuttle">🏸</span> Badminton Tracker</h1>
+      <p id="fb-status-header">Setting up...</p>
+    </div>
+    <div style="text-align:right;">
+      <img src="https://visitor-badge.laobi.icu/badge?page_id=badminton.tracker.app&left_color=%2330363d&right_color=%2339d353&left_text=👁%20Visits" alt="Visitor Count" style="border-radius:6px; margin-top:4px;" />
+    </div>
+  </div>
 </header>
 
 <div class="tabs">
   <div class="tab active" onclick="switchTab('record')">📅 Record</div>
   <div class="tab" onclick="switchTab('sessions')">📋 Sessions</div>
   <div class="tab" onclick="switchTab('summary')">💰 Summary</div>
+  <div class="tab" onclick="switchTab('rivalry')">⚔️ 1v1</div>
 </div>
 
 <!-- ===== SETUP PAGE ===== -->
@@ -704,6 +1087,76 @@
   <div id="dues-list"></div>
 </div>
 
+<!-- ===== 1v1 RIVALRY PAGE ===== -->
+<div class="page" id="page-rivalry">
+
+  <!-- Sub tabs -->
+  <div class="rivalry-sub-tabs">
+    <div class="rivalry-sub-tab active" id="rtab-log" onclick="switchRivalryTab('log')">➕ Log Match</div>
+    <div class="rivalry-sub-tab" id="rtab-leaderboard" onclick="switchRivalryTab('leaderboard')">🏆 Leaderboard</div>
+    <div class="rivalry-sub-tab" id="rtab-h2h" onclick="switchRivalryTab('h2h')">⚔️ H2H</div>
+  </div>
+
+  <!-- LOG MATCH -->
+  <div id="rivalry-log">
+    <div class="match-form">
+      <h3>⚔️ Log a Match</h3>
+      <div style="margin-bottom:10px;">
+        <label>Date</label>
+        <input type="date" id="match-date" style="margin-bottom:0;"/>
+      </div>
+      <label style="margin-bottom:6px;">Players</label>
+      <div class="vs-selector">
+        <select class="player-select" id="match-p1"><option value="">Player 1</option></select>
+        <div class="vs-badge">VS</div>
+        <select class="player-select" id="match-p2"><option value="">Player 2</option></select>
+      </div>
+      <label style="margin-bottom:6px;">Score</label>
+      <div class="score-row">
+        <input type="number" class="score-input" id="match-s1" placeholder="21" min="0" max="99"/>
+        <div class="score-dash">—</div>
+        <input type="number" class="score-input" id="match-s2" placeholder="15" min="0" max="99"/>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="logMatch()">📤 Submit Match</button>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;text-align:center;">The other player will need to confirm this result.</p>
+    </div>
+
+    <!-- Pending confirmations -->
+    <div class="section-title">⏳ Pending Confirmation</div>
+    <div id="pending-matches"></div>
+
+    <!-- Recent confirmed matches -->
+    <div class="section-title" style="margin-top:14px;">✅ Recent Matches</div>
+    <div id="confirmed-matches"></div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div id="rivalry-leaderboard" style="display:none;">
+    <div class="section-title">🏆 Win % Leaderboard</div>
+    <div class="leaderboard-card" id="lb-list"></div>
+    <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">Only confirmed matches count towards rankings</p>
+  </div>
+
+  <!-- H2H -->
+  <div id="rivalry-h2h" style="display:none;">
+    <div class="h2h-section">
+      <div class="h2h-header">⚔️ Head to Head</div>
+      <div class="h2h-filter">
+        <select class="player-select" id="h2h-p1" onchange="renderH2H()" style="appearance:auto;-webkit-appearance:auto;">
+          <option value="">Select Player 1</option>
+        </select>
+        <select class="player-select" id="h2h-p2" onchange="renderH2H()" style="appearance:auto;-webkit-appearance:auto;">
+          <option value="">Select Player 2</option>
+        </select>
+      </div>
+      <div class="h2h-result" id="h2h-result">
+        <div class="no-data" style="padding:20px 0;"><div class="icon">⚔️</div>Select two players above</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
 <div id="toast">Saved!</div>
 
 <!-- Firebase SDK -->
@@ -793,6 +1246,7 @@ async function connectFirebase(cfg) {
     setFbStatus(true);
     subscribeToSessions();
     subscribeToRate();
+    subscribeToMatches();
     await syncPlayersFromFirebase();
     return true;
   } catch (e) {
@@ -1176,6 +1630,7 @@ window.switchTab = function(tab) {
   document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
   document.getElementById('page-' + tab).classList.add('active');
   if (tab === 'summary') renderSummary();
+  if (tab === 'rivalry') { populateMatchSelects(); renderMatchLists(); renderLeaderboard(); renderH2HSelects(); }
 };
 
 // ── INIT ──────────────────────────────────────────────────
@@ -1195,6 +1650,7 @@ window.switchTab = function(tab) {
   // Set today's date
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('session-date').value = today;
+  document.getElementById('match-date').value = today;
 
   loadLocalPlayers();
   renderPlayers();
@@ -1207,6 +1663,216 @@ window.switchTab = function(tab) {
   setFbStatus(false);
   await connectFirebase(FIREBASE_CONFIG);
 })();
+
+// ── 1v1 RIVALRY ──────────────────────────────────────────
+let matches = [];
+let unsubscribeMatches = null;
+
+function subscribeToMatches() {
+  if (!db) return;
+  if (unsubscribeMatches) unsubscribeMatches();
+  const q = query(collection(db, 'matches'), orderBy('date', 'desc'));
+  unsubscribeMatches = onSnapshot(q, snap => {
+    matches = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderMatchLists();
+    renderLeaderboard();
+    renderH2H();
+  });
+}
+
+window.switchRivalryTab = function(tab) {
+  ['log','leaderboard','h2h'].forEach(t => {
+    document.getElementById('rivalry-' + t).style.display = t === tab ? 'block' : 'none';
+    document.getElementById('rtab-' + t).classList.toggle('active', t === tab);
+  });
+  if (tab === 'leaderboard') renderLeaderboard();
+  if (tab === 'h2h') renderH2HSelects();
+};
+
+function populateMatchSelects() {
+  const opts = '<option value="">Select...</option>' + players.map(p => `<option value="${p}">${p}</option>`).join('');
+  ['match-p1','match-p2'].forEach(id => document.getElementById(id).innerHTML = opts);
+}
+
+function renderH2HSelects() {
+  const opts = '<option value="">Select...</option>' + players.map(p => `<option value="${p}">${p}</option>`).join('');
+  ['h2h-p1','h2h-p2'].forEach(id => document.getElementById(id).innerHTML = opts);
+}
+
+window.logMatch = async function() {
+  if (!db) { showToast('Not connected!', true); return; }
+  const p1 = document.getElementById('match-p1').value;
+  const p2 = document.getElementById('match-p2').value;
+  const s1 = parseInt(document.getElementById('match-s1').value);
+  const s2 = parseInt(document.getElementById('match-s2').value);
+  const dateVal = document.getElementById('match-date').value;
+  if (!p1 || !p2) { showToast('Select both players!', true); return; }
+  if (p1 === p2) { showToast('Select two different players!', true); return; }
+  if (isNaN(s1) || isNaN(s2)) { showToast('Enter both scores!', true); return; }
+  if (s1 === s2) { showToast('Scores cannot be equal!', true); return; }
+  if (!dateVal) { showToast('Pick a date!', true); return; }
+  const winner = s1 > s2 ? p1 : p2;
+  const loser  = s1 > s2 ? p2 : p1;
+  try {
+    await addDoc(collection(db, 'matches'), {
+      p1, p2, s1, s2, winner, loser,
+      winnerScore: Math.max(s1,s2), loserScore: Math.min(s1,s2),
+      date: dateVal, confirmed: false, loggedBy: p1,
+      createdAt: new Date().toISOString()
+    });
+    ['match-p1','match-p2','match-s1','match-s2'].forEach(id => document.getElementById(id).value = '');
+    showToast('📤 Match submitted! Waiting for confirmation.');
+  } catch(e) { showToast('Error: ' + e.message, true); }
+};
+
+window.confirmMatch = async function(id) {
+  if (!db) return;
+  try {
+    await setDoc(doc(db, 'matches', id), { confirmed: true }, { merge: true });
+    showToast('✅ Match confirmed!');
+  } catch(e) { showToast('Error: ' + e.message, true); }
+};
+
+window.deleteMatch = async function(id) {
+  if (!confirm('Delete this match?')) return;
+  try {
+    await deleteDoc(doc(db, 'matches', id));
+    showToast('Match deleted');
+  } catch(e) { showToast('Error: ' + e.message, true); }
+};
+
+function renderMatchLists() {
+  const pending   = matches.filter(m => !m.confirmed);
+  const confirmed = matches.filter(m => m.confirmed).slice(0, 15);
+
+  const pel = document.getElementById('pending-matches');
+  if (!pending.length) {
+    pel.innerHTML = '<div class="no-data" style="padding:16px 0;"><div class="icon" style="font-size:28px;">✅</div>No pending matches</div>';
+  } else {
+    pel.innerHTML = pending.map(m => `
+      <div class="match-card">
+        <div class="match-card-top">
+          <div class="match-date">${fmtDate(m.date)}</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <span class="pending-badge">⏳ Pending</span>
+            <button class="session-delete" onclick="deleteMatch('${m.id}')">🗑</button>
+          </div>
+        </div>
+        <div class="match-scoreline">
+          <div class="match-player">
+            <div class="match-player-name" style="color:${colorFor(m.p1)}">${m.p1}</div>
+            <div class="match-player-score ${m.winner===m.p1?'winner':'loser'}">${m.s1}</div>
+          </div>
+          <div class="match-vs">VS</div>
+          <div class="match-player">
+            <div class="match-player-name" style="color:${colorFor(m.p2)}">${m.p2}</div>
+            <div class="match-player-score ${m.winner===m.p2?'winner':'loser'}">${m.s2}</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="match-winner-tag">Winner: <span>${m.winner}</span></div>
+          <button class="confirm-btn" onclick="confirmMatch('${m.id}')">✅ Confirm Result</button>
+        </div>
+      </div>`).join('');
+  }
+
+  const cel = document.getElementById('confirmed-matches');
+  if (!confirmed.length) {
+    cel.innerHTML = '<div class="no-data" style="padding:16px 0;"><div class="icon" style="font-size:28px;">🏸</div>No confirmed matches yet</div>';
+  } else {
+    cel.innerHTML = confirmed.map(m => `
+      <div class="match-card">
+        <div class="match-card-top">
+          <div class="match-date">${fmtDate(m.date)}</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <span class="confirmed-badge">✅ Confirmed</span>
+            <button class="session-delete" onclick="deleteMatch('${m.id}')">🗑</button>
+          </div>
+        </div>
+        <div class="match-scoreline">
+          <div class="match-player">
+            <div class="match-player-name" style="color:${colorFor(m.p1)}">${m.p1}</div>
+            <div class="match-player-score ${m.winner===m.p1?'winner':'loser'}">${m.s1}</div>
+          </div>
+          <div class="match-vs">VS</div>
+          <div class="match-player">
+            <div class="match-player-name" style="color:${colorFor(m.p2)}">${m.p2}</div>
+            <div class="match-player-score ${m.winner===m.p2?'winner':'loser'}">${m.s2}</div>
+          </div>
+        </div>
+        <div class="match-winner-tag">🏆 Winner: <span>${m.winner}</span></div>
+      </div>`).join('');
+  }
+}
+
+function renderLeaderboard() {
+  const confirmed = matches.filter(m => m.confirmed);
+  const stats = {};
+  for (const p of players) stats[p] = { w:0, l:0 };
+  for (const m of confirmed) {
+    if (!stats[m.winner]) stats[m.winner] = { w:0, l:0 };
+    if (!stats[m.loser])  stats[m.loser]  = { w:0, l:0 };
+    stats[m.winner].w++;
+    stats[m.loser].l++;
+  }
+  const entries = Object.entries(stats)
+    .map(([name, s]) => ({ name, w:s.w, l:s.l, total:s.w+s.l, pct: s.w+s.l===0 ? 0 : Math.round((s.w/(s.w+s.l))*100) }))
+    .sort((a,b) => b.pct - a.pct || b.total - a.total || b.w - a.w);
+  const el = document.getElementById('lb-list');
+  if (!entries.length) { el.innerHTML = '<div class="no-data" style="padding:20px;"><div class="icon">🏆</div>No matches yet</div>'; return; }
+  const syms = ['🥇','🥈','🥉'];
+  const cls  = ['gold','silver','bronze'];
+  el.innerHTML = entries.map((e,i) => `
+    <div class="lb-row">
+      <div class="lb-rank ${cls[i]||''}">${syms[i]||(i+1)}</div>
+      <div class="lb-avatar" style="background:${colorFor(e.name)}22;color:${colorFor(e.name)}">${initials(e.name)}</div>
+      <div class="lb-info">
+        <div class="lb-name">${e.name}</div>
+        <div class="lb-record">${e.w}W — ${e.l}L &nbsp;·&nbsp; ${e.total} match${e.total!==1?'es':''}</div>
+        <div class="lb-bar-wrap"><div class="lb-bar" style="width:${e.pct}%;background:${colorFor(e.name)}"></div></div>
+      </div>
+      <div class="lb-winpct" style="color:${colorFor(e.name)}">${e.pct}%</div>
+    </div>`).join('');
+}
+
+window.renderH2H = function() {
+  const p1 = document.getElementById('h2h-p1') ? document.getElementById('h2h-p1').value : '';
+  const p2 = document.getElementById('h2h-p2') ? document.getElementById('h2h-p2').value : '';
+  const el = document.getElementById('h2h-result');
+  if (!el) return;
+  if (!p1 || !p2) { el.innerHTML = '<div class="no-data" style="padding:20px 0;"><div class="icon">⚔️</div>Select two players above</div>'; return; }
+  if (p1 === p2) { el.innerHTML = '<div class="no-data" style="padding:20px 0;">Select two different players</div>'; return; }
+  const h2hMatches = matches.filter(m => m.confirmed && ((m.p1===p1&&m.p2===p2)||(m.p1===p2&&m.p2===p1)));
+  const p1wins = h2hMatches.filter(m => m.winner===p1).length;
+  const p2wins = h2hMatches.filter(m => m.winner===p2).length;
+  let p1c='tied', p2c='tied';
+  if (p1wins>p2wins){p1c='leading';p2c='trailing';}
+  else if(p2wins>p1wins){p2c='leading';p1c='trailing';}
+  const history = h2hMatches.slice(0,10).map(m => {
+    const ms = m.p1===p1 ? m.s1 : m.s2;
+    const os = m.p1===p1 ? m.s2 : m.s1;
+    return `<div class="h2h-mini-match">
+      <div>${fmtDate(m.date)}</div>
+      <div class="h2h-mini-score">${ms} — ${os}</div>
+      <div style="font-size:11px;font-weight:700;color:${m.winner===p1?'var(--accent)':'var(--warn)'}">${m.winner===p1?'WIN':'LOSS'}</div>
+    </div>`;
+  }).join('');
+  el.innerHTML = `
+    <div class="h2h-matchup">
+      <div class="h2h-player">
+        <div class="h2h-player-name" style="color:${colorFor(p1)}">${p1}</div>
+        <div class="h2h-player-wins ${p1c}">${p1wins}</div>
+      </div>
+      <div class="h2h-divider">WINS</div>
+      <div class="h2h-player">
+        <div class="h2h-player-name" style="color:${colorFor(p2)}">${p2}</div>
+        <div class="h2h-player-wins ${p2c}">${p2wins}</div>
+      </div>
+    </div>
+    <div class="h2h-matches-label">${h2hMatches.length} confirmed match${h2hMatches.length!==1?'es':''} between them</div>
+    ${h2hMatches.length ? `<div class="section-title" style="margin-top:12px;">Match History</div>${history}` : ''}
+  `;
+};
 </script>
 </body>
 </html>
