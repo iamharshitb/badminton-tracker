@@ -1221,873 +1221,705 @@
 
 <div id="toast">Saved!</div>
 
+<div id="toast">Saved!</div>
+
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs,
-  deleteDoc,
-  doc,
-  setDoc,
-  getDoc,
-  onSnapshot,
-  query,
-  orderBy
+  getFirestore, collection, addDoc, getDocs, deleteDoc,
+  doc, setDoc, getDoc, onSnapshot, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ── GLOBALS ─────────────────────────────────────────────
-let db = null;
-let firebaseApp = null;
-let players = [];
-let sessions = [];
-let rate = 50;
-let sessionHours = 1;
+// ── GLOBALS ──────────────────────────────────────────────
+let db = null, firebaseApp = null;
+let players = [], sessions = [], matches = [];
+let rate = 50, sessionHours = 1;
 let selectedPlayers = new Set();
-let summaryMonth = new Date();
-let unsubscribeSessions = null;
-let unsubscribeRate = null;
+let summaryMonthOffset = 0;
+let unsubscribeSessions = null, unsubscribeRate = null, unsubscribeMatches = null;
+let currentMatchType = 'singles';
 
-const COLORS = [
-  "#39d353","#58a6ff","#f78166","#e3b341","#bc8cff",
-  "#79c0ff","#ffa657","#7ee787","#ff7b72","#d2a8ff"
-];
+const COLORS = ["#39d353","#58a6ff","#f78166","#e3b341","#bc8cff","#79c0ff","#ffa657","#7ee787","#ff7b72","#d2a8ff"];
+function colorFor(n){let h=0;for(let c of n)h=(h*31+c.charCodeAt(0))&0xFFFFFF;return COLORS[Math.abs(h)%COLORS.length];}
+function initials(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
+function fmtDate(d){return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});}
 
-// ── UTILS ────────────────────────────────────────────────
-function initials(name) {
-  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-}
-function colorFor(name) {
-  let h = 0;
-  for (let c of name) h = (h * 31 + c.charCodeAt(0)) & 0xFFFFFF;
-  return COLORS[Math.abs(h) % COLORS.length];
-}
-function showToast(msg, isError = false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.background = isError ? 'var(--warn)' : 'var(--accent)';
+// ── TOAST ────────────────────────────────────────────────
+function showToast(msg, isError=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.style.background=isError?'var(--warn)':'var(--accent)';
+  t.style.color=isError?'#fff':'#0d1117';
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
-function fmtDate(d) {
-  return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+  clearTimeout(t._t);
+  t._t=setTimeout(()=>t.classList.remove('show'),2500);
 }
 
-// ── LOCAL STORAGE (config + players + rate) ──────────────
-function loadLocalConfig() {
-  const cfg = JSON.parse(localStorage.getItem('fbConfig') || 'null');
-  if (cfg) {
-    document.getElementById('cfg-apiKey').value = cfg.apiKey || '';
-    document.getElementById('cfg-authDomain').value = cfg.authDomain || '';
-    document.getElementById('cfg-projectId').value = cfg.projectId || '';
-    document.getElementById('cfg-appId').value = cfg.appId || '';
-  }
-  const r = localStorage.getItem('rate');
-  if (r) { rate = parseFloat(r); document.getElementById('rate-input').value = rate; }
-  return cfg;
-}
-
-function loadLocalPlayers() {
-  players = JSON.parse(localStorage.getItem('players') || '[]');
-}
-
-function saveLocalPlayers() {
-  localStorage.setItem('players', JSON.stringify(players));
-}
+// ── LOCAL STORAGE ────────────────────────────────────────
+function loadLocalPlayers(){players=JSON.parse(localStorage.getItem('players')||'[]');}
+function saveLocalPlayers(){localStorage.setItem('players',JSON.stringify(players));}
 
 // ── FIREBASE ─────────────────────────────────────────────
-async function connectFirebase(cfg) {
+async function connectFirebase(cfg){
   try {
-    if (firebaseApp) { /* already init */ }
-    else { firebaseApp = initializeApp(cfg, 'badminton-app'); }
-    db = getFirestore(firebaseApp);
-    // test connection
-    await getDocs(collection(db, 'sessions'));
+    if(!firebaseApp) firebaseApp=initializeApp(cfg,'badminton-app');
+    db=getFirestore(firebaseApp);
+    await getDocs(collection(db,'sessions'));
     setFbStatus(true);
     subscribeToSessions();
     subscribeToRate();
     await syncPlayersFromFirebase();
-    // matches subscription separately so index errors don't break the app
-    try { subscribeToMatches(); } catch(e) { console.warn('Matches subscription:', e); }
+    try { subscribeToMatches(); } catch(e){ console.warn('matches sub:',e); }
     return true;
-  } catch (e) {
+  } catch(e){
     console.error(e);
     setFbStatus(false);
     return false;
   }
 }
 
-function setFbStatus(ok) {
-  const el = document.getElementById('fb-status-header');
-  el.innerHTML = ok
-    ? '<span class="fb-status connected"><span class="fb-status-dot"></span>Firebase Connected</span>'
-    : '<span class="fb-status disconnected"><span class="fb-status-dot"></span>Not Connected</span>';
-  document.getElementById('no-firebase-record').style.display = ok ? 'none' : 'flex';
+function setFbStatus(ok){
+  const el=document.getElementById('fb-status-header');
+  el.innerHTML=ok
+    ?'<span class="fb-status connected"><span class="fb-status-dot"></span>Firebase Connected</span>'
+    :'<span class="fb-status disconnected"><span class="fb-status-dot"></span>Not Connected</span>';
+  const banner=document.getElementById('no-firebase-record');
+  if(banner) banner.style.display=ok?'none':'flex';
 }
 
-// ── PLAYERS (stored in Firestore + local) ─────────────────
-async function syncPlayersFromFirebase() {
-  if (!db) return;
-  try {
-    const snap = await getDoc(doc(db, 'config', 'players'));
-    if (snap.exists()) {
-      players = snap.data().list || [];
-      saveLocalPlayers();
-    } else {
-      if (players.length) await pushPlayersToFirebase();
-    }
-  } catch(e) {}
-  renderPlayers();
-  renderPlayersGrid();
-  checkIdentity();
-}
-
-async function pushPlayersToFirebase() {
-  if (!db) return;
-  await setDoc(doc(db, 'config', 'players'), { list: players });
-}
-
-// ── SESSIONS (realtime) ───────────────────────────────────
-function subscribeToSessions() {
-  if (!db) return;
-  if (unsubscribeSessions) unsubscribeSessions();
-  const q = query(collection(db, 'sessions'), orderBy('date', 'desc'));
-  unsubscribeSessions = onSnapshot(q, snap => {
-    sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+// ── SUBSCRIPTIONS ─────────────────────────────────────────
+function subscribeToSessions(){
+  if(!db) return;
+  if(unsubscribeSessions) unsubscribeSessions();
+  const q=query(collection(db,'sessions'),orderBy('date','desc'));
+  unsubscribeSessions=onSnapshot(q,snap=>{
+    sessions=snap.docs.map(d=>({id:d.id,...d.data()}));
     renderSessionsList();
     renderSummary();
   });
 }
 
-// ── RATE (realtime) ───────────────────────────────────────
-function subscribeToRate() {
-  if (!db) return;
-  if (unsubscribeRate) unsubscribeRate();
-  unsubscribeRate = onSnapshot(doc(db, 'config', 'rate'), snap => {
-    if (snap.exists()) {
-      const newRate = snap.data().value;
-      if (newRate && newRate !== rate) {
-        rate = newRate;
-        localStorage.setItem('rate', rate);
-        document.getElementById('rate-display-record').textContent = rate;
-        const setupInput = document.getElementById('rate-input');
-        if (setupInput) setupInput.value = rate;
+function subscribeToRate(){
+  if(!db) return;
+  if(unsubscribeRate) unsubscribeRate();
+  unsubscribeRate=onSnapshot(doc(db,'config','rate'),snap=>{
+    if(snap.exists()){
+      const nr=snap.data().value;
+      if(nr&&nr!==rate){
+        rate=nr;
+        localStorage.setItem('rate',rate);
+        document.getElementById('rate-display-record').textContent=rate;
+        const si=document.getElementById('rate-input');
+        if(si) si.value=rate;
         renderSummary();
       }
     }
   });
 }
 
-async function pushRateToFirebase() {
-  if (!db) return;
-  await setDoc(doc(db, 'config', 'rate'), { value: rate });
-}
-
-
-window.saveFirebaseConfig = async function() {
-  const cfg = {
-    apiKey: document.getElementById('cfg-apiKey').value.trim(),
-    authDomain: document.getElementById('cfg-authDomain').value.trim(),
-    projectId: document.getElementById('cfg-projectId').value.trim(),
-    appId: document.getElementById('cfg-appId').value.trim(),
-    storageBucket: document.getElementById('cfg-projectId').value.trim() + '.appspot.com',
-    messagingSenderId: '000000000000'
-  };
-  if (!cfg.apiKey || !cfg.projectId) { showToast('Please fill API Key and Project ID', true); return; }
-  localStorage.setItem('fbConfig', JSON.stringify(cfg));
-  const ok = await connectFirebase(cfg);
-  if (ok) showToast('🔥 Firebase connected!');
-  else showToast('❌ Connection failed — check config', true);
-};
-
-window.saveRate = function() {
-  rate = parseFloat(document.getElementById('rate-input').value) || 50;
-  localStorage.setItem('rate', rate);
-  document.getElementById('rate-display-record').textContent = rate;
-  showToast('Rate saved: ₹' + rate + '/hr');
-};
-
-// ── PLAYERS MANAGEMENT ────────────────────────────────────
-window.addPlayer = async function() {
-  const inp = document.getElementById('new-player');
-  const name = inp.value.trim();
-  if (!name) return;
-  if (players.includes(name)) { showToast('Already added!', true); return; }
-  players.push(name);
-  inp.value = '';
-  saveLocalPlayers();
-  await pushPlayersToFirebase();
-  renderPlayers();
-  renderPlayersGrid();
-  showToast('Added ' + name);
-};
-
-window.removePlayer = async function(name) {
-  players = players.filter(p => p !== name);
-  saveLocalPlayers();
-  await pushPlayersToFirebase();
-  renderPlayers();
-  renderPlayersGrid();
-};
-
-function renderPlayers() {
-  const el = document.getElementById('player-list');
-  if (!players.length) { el.innerHTML = '<span style="color:var(--muted);font-size:13px;">No players yet</span>'; return; }
-  el.innerHTML = players.map(p => `
-    <div class="player-chip">
-      <span style="color:${colorFor(p)};font-weight:700;">${initials(p)}</span>
-      ${p}
-      <button onclick="removePlayer('${p.replace(/'/g,"\\'")}')">×</button>
-    </div>
-  `).join('');
-}
-
-function renderPlayersGrid() {
-  const el = document.getElementById('players-grid');
-  if (!players.length) {
-    el.innerHTML = '<div style="color:var(--muted);font-size:13px;grid-column:span 2;padding:20px 0;">Add players in the Setup tab first.</div>';
-    return;
-  }
-  el.innerHTML = players.map(p => `
-    <div class="player-toggle ${selectedPlayers.has(p) ? 'selected' : ''}" onclick="togglePlayer('${p.replace(/'/g,"\\'")}')">
-      <div class="avatar" style="background:${colorFor(p)}22; color:${colorFor(p)}">${initials(p)}</div>
-      <div class="name">${p}</div>
-      <div class="check">✅</div>
-    </div>
-  `).join('');
-}
-
-window.toggleAddPlayer = function() {
-  const panel = document.getElementById('add-player-panel');
-  const btn = document.getElementById('add-player-btn');
-  const isOpen = panel.style.display !== 'none';
-  panel.style.display = isOpen ? 'none' : 'block';
-  btn.textContent = isOpen ? '+ Add Name' : '✕ Close';
-  if (!isOpen) renderPlayerListRecord();
-};
-
-window.addPlayerFromRecord = async function() {
-  const inp = document.getElementById('new-player-record');
-  const name = inp.value.trim();
-  if (!name) return;
-  if (players.includes(name)) { showToast('Already added!', true); return; }
-  players.push(name);
-  inp.value = '';
-  saveLocalPlayers();
-  await pushPlayersToFirebase();
-  renderPlayers();
-  renderPlayerListRecord();
-  renderPlayersGrid();
-  showToast('Added ' + name);
-};
-
-function renderPlayerListRecord() {
-  const el = document.getElementById('player-list-record');
-  if (!el) return;
-  if (!players.length) { el.innerHTML = '<span style="color:var(--muted);font-size:13px;">No players yet</span>'; return; }
-  el.innerHTML = players.map(p => `
-    <div class="player-chip">
-      <span style="color:${colorFor(p)};font-weight:700;">${initials(p)}</span>
-      ${p}
-      <button onclick="removePlayerFromRecord('${p.replace(/'/g,"\\'")}')">×</button>
-    </div>
-  `).join('');
-}
-
-window.removePlayerFromRecord = async function(name) {
-  players = players.filter(p => p !== name);
-  selectedPlayers.delete(name);
-  saveLocalPlayers();
-  await pushPlayersToFirebase();
-  renderPlayers();
-  renderPlayerListRecord();
-  renderPlayersGrid();
-  showToast(name + ' removed');
-};
-
-window.toggleRateEditor = function() {
-  const editor = document.getElementById('rate-editor');
-  const btn = document.getElementById('rate-edit-btn');
-  const isOpen = editor.style.display === 'block';
-  editor.style.display = isOpen ? 'none' : 'block';
-  btn.textContent = isOpen ? '✏️ Change' : '✕ Close';
-  if (!isOpen) document.getElementById('rate-input-record').value = rate;
-};
-
-window.saveRateFromRecord = async function() {
-  const val = parseFloat(document.getElementById('rate-input-record').value);
-  if (!val || val < 1) { showToast('Enter a valid rate!', true); return; }
-  rate = val;
-  localStorage.setItem('rate', rate);
-  document.getElementById('rate-display-record').textContent = rate;
-  const setupInput = document.getElementById('rate-input');
-  if (setupInput) setupInput.value = rate;
-  document.getElementById('rate-editor').style.display = 'none';
-  document.getElementById('rate-edit-btn').textContent = '✏️ Change';
-  await pushRateToFirebase();
-  renderSummary();
-  showToast('✅ Rate updated for everyone to ₹' + rate + '/hr');
-};
-
-window.togglePlayer = function(name) {
-  if (selectedPlayers.has(name)) selectedPlayers.delete(name);
-  else selectedPlayers.add(name);
-  renderPlayersGrid();
-  updateHoursNote();
-};
-
-// ── HOURS COUNTER ─────────────────────────────────────────
-window.changeHours = function(delta) {
-  sessionHours = Math.max(0.5, Math.round((sessionHours + delta) * 2) / 2);
-  document.getElementById('hours-display').textContent = sessionHours;
-  updateHoursNote();
-};
-
-function updateHoursNote() {
-  document.getElementById('hours-note').textContent = sessionHours;
-}
-
-// ── SAVE SESSION ──────────────────────────────────────────
-window.saveSession = async function() {
-  if (!db) { showToast('Connect Firebase first!', true); return; }
-  const dateVal = document.getElementById('session-date').value;
-  if (!dateVal) { showToast('Pick a date first!', true); return; }
-  if (selectedPlayers.size === 0) { showToast('Select at least one player!', true); return; }
-
-  const sessionData = {
-    date: dateVal,
-    hours: sessionHours,
-    players: [...selectedPlayers],
-    createdAt: new Date().toISOString()
-  };
-
-  try {
-    await addDoc(collection(db, 'sessions'), sessionData);
-    selectedPlayers.clear();
-    renderPlayersGrid();
-    showToast('✅ Session saved!');
-  } catch(e) {
-    showToast('Error saving: ' + e.message, true);
-  }
-};
-
-// ── CLEAR ALL SESSIONS ────────────────────────────────────
-window.clearAllSessions = async function() {
-  if (!db) { showToast('Not connected to Firebase!', true); return; }
-  if (sessions.length === 0) { showToast('No sessions to clear!', true); return; }
-  const confirmed = confirm(`⚠️ This will permanently delete all ${sessions.length} session(s).\n\nPlayer names and rate will be kept.\n\nAre you sure?`);
-  if (!confirmed) return;
-  try {
-    const { getDocs, collection, deleteDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-    const snap = await getDocs(collection(db, 'sessions'));
-    const deletes = snap.docs.map(d => deleteDoc(doc(db, 'sessions', d.id)));
-    await Promise.all(deletes);
-    showToast('✅ All sessions cleared!');
-  } catch(e) {
-    showToast('Error: ' + e.message, true);
-  }
-};
-
-// ── DELETE SESSION ────────────────────────────────────────
-window.deleteSession = async function(id) {
-  if (!db) return;
-  if (!confirm('Delete this session?')) return;
-  try {
-    await deleteDoc(doc(db, 'sessions', id));
-    showToast('Session deleted');
-  } catch(e) {
-    showToast('Error: ' + e.message, true);
-  }
-};
-
-// ── RENDER SESSIONS ───────────────────────────────────────
-function renderSessionsList() {
-  const el = document.getElementById('sessions-list');
-  if (!sessions.length) {
-    el.innerHTML = '<div class="no-data"><div class="icon">📭</div>No sessions recorded yet.<br>Go to Record tab to add one!</div>';
-    return;
-  }
-  el.innerHTML = sessions.map(s => `
-    <div class="session-card">
-      <div class="session-header">
-        <div class="session-date">${fmtDate(s.date)}</div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div class="session-hours">${s.hours}h</div>
-          <button class="session-delete" onclick="deleteSession('${s.id}')">🗑</button>
-        </div>
-      </div>
-      <div class="session-players">
-        ${(s.players||[]).map(p => `<div class="mini-chip" style="border-color:${colorFor(p)}44;color:${colorFor(p)}">${p}</div>`).join('')}
-      </div>
-    </div>
-  `).join('');
-}
-
-// ── SUMMARY ───────────────────────────────────────────────
-let summaryMonthOffset = 0;
-
-window.changeMonth = function(delta) {
-  summaryMonthOffset += delta;
-  renderSummary();
-};
-
-function renderSummary() {
-  const now = new Date();
-  const target = new Date(now.getFullYear(), now.getMonth() + summaryMonthOffset, 1);
-  const yr = target.getFullYear();
-  const mo = target.getMonth();
-
-  document.getElementById('month-label').textContent =
-    target.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-
-  const monthSessions = sessions.filter(s => {
-    const d = new Date(s.date + 'T00:00:00');
-    return d.getFullYear() === yr && d.getMonth() === mo;
-  });
-
-  const totalHours = monthSessions.reduce((a, s) => a + (s.hours || 0), 0);
-  document.getElementById('stat-sessions').textContent = monthSessions.length;
-  document.getElementById('stat-hours').textContent = totalHours;
-
-  // calculate dues per player
-  const dues = {};
-  for (const s of monthSessions) {
-    for (const p of (s.players || [])) {
-      if (!dues[p]) dues[p] = 0;
-      dues[p] += s.hours || 0;
-    }
-  }
-
-  const el = document.getElementById('dues-list');
-  const entries = Object.entries(dues).sort((a, b) => b[1] - a[1]);
-
-  if (!entries.length) {
-    el.innerHTML = '<div class="no-data"><div class="icon">💸</div>No sessions this month yet.</div>';
-    return;
-  }
-
-  el.innerHTML = entries.map(([name, hours]) => {
-    const amount = Math.round(hours * rate);
-    return `
-      <div class="due-row">
-        <div class="due-avatar" style="background:${colorFor(name)}22;color:${colorFor(name)}">${initials(name)}</div>
-        <div class="due-info">
-          <div class="due-name">${name}</div>
-          <div class="due-hours">${hours} hour${hours !== 1 ? 's' : ''} played · ₹${rate}/hr</div>
-        </div>
-        <div class="due-amount">
-          ₹${amount}
-          <span>DUE</span>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-// ── TABS ──────────────────────────────────────────────────
-window.switchTab = function(tab) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
-  document.getElementById('page-' + tab).classList.add('active');
-  if (tab === 'summary') renderSummary();
-  if (tab === 'rivalry') { populateMatchSelects(); renderMatchLists(); renderLeaderboard(); renderH2HSelects(); }
-};
-
-// ── INIT ──────────────────────────────────────────────────
-(async function init() {
-  // ── HARDCODED FIREBASE CONFIG ──────────────────────────
-  const FIREBASE_CONFIG = {
-    apiKey: "AIzaSyB2k6O_5EJNt9QeUG0xXFw4tc1CoKb5tMk",
-    authDomain: "badminton-attendance-tracker.firebaseapp.com",
-    projectId: "badminton-attendance-tracker",
-    storageBucket: "badminton-attendance-tracker.firebasestorage.app",
-    messagingSenderId: "1004212985506",
-    appId: "1:1004212985506:web:ca92db30fab1f3a0d041fb",
-    measurementId: "G-ZN3S7RLGN2"
-  };
-  localStorage.setItem('fbConfig', JSON.stringify(FIREBASE_CONFIG));
-
-  // Set today's date
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('session-date').value = today;
-  document.getElementById('match-date').value = today;
-
-  loadLocalPlayers();
-  renderPlayers();
-  renderPlayersGrid();
-
-  const r = localStorage.getItem('rate');
-  if (r) { rate = parseFloat(r); document.getElementById('rate-input').value = rate; }
-  document.getElementById('rate-display-record').textContent = rate;
-
-  setFbStatus(false);
-  await connectFirebase(FIREBASE_CONFIG);
-})();
-
-// ── IDENTITY ──────────────────────────────────────────────
-function showIdentityOverlay() {
-  const overlay = document.getElementById('identity-overlay');
-  overlay.style.display = 'block';
-  const el = document.getElementById('identity-player-list');
-  if (!players.length) {
-    el.innerHTML = '<p style="color:#8b949e;font-size:13px;text-align:center;padding:20px 0;">No players added yet.<br>Ask your admin to add players first.</p>';
-    return;
-  }
-  el.innerHTML = players.map(p => `
-    <div onclick="window._setIdentity('${p.replace(/'/g,"\\'")}');"
-      style="background:#1c2333; border:1.5px solid #30363d; border-radius:12px; padding:16px; color:#e6edf3; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:12px; width:100%;"
-    >
-      <div style="width:42px; height:42px; border-radius:50%; background:${colorFor(p)}22; color:${colorFor(p)}; display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:14px; flex-shrink:0;">${initials(p)}</div>
-      <span>${p}</span>
-      <span style="margin-left:auto; font-size:18px; color:#8b949e;">›</span>
-    </div>
-  `).join('');
-}
-
-window._setIdentity = function(name) {
-  localStorage.setItem('badminton_identity', name);
-  document.getElementById('identity-overlay').style.display = 'none';
-  document.getElementById('identity-badge').style.display = 'flex';
-  document.getElementById('identity-name-badge').textContent = name;
-  renderMatchLists();
-};
-
-window.setIdentity = window._setIdentity;
-
-window.changeIdentity = function() {
-  showIdentityOverlay();
-};
-
-function checkIdentity() {
-  const saved = localStorage.getItem('badminton_identity');
-  if (saved && players.includes(saved)) {
-    document.getElementById('identity-badge').style.display = 'flex';
-    document.getElementById('identity-name-badge').textContent = saved;
-  } else if (players.length > 0) {
-    // Only show if players are loaded
-    showIdentityOverlay();
-  }
-}
-
-
-let matches = [];
-let unsubscribeMatches = null;
-
-function subscribeToMatches() {
-  if (!db) return;
-  if (unsubscribeMatches) unsubscribeMatches();
-  // No orderBy — avoids needing a Firestore index. Sort in JS instead.
-  unsubscribeMatches = onSnapshot(collection(db, 'matches'), snap => {
-    matches = snap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+function subscribeToMatches(){
+  if(!db) return;
+  if(unsubscribeMatches) unsubscribeMatches();
+  unsubscribeMatches=onSnapshot(collection(db,'matches'),snap=>{
+    matches=snap.docs.map(d=>({id:d.id,...d.data()}))
+      .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     renderMatchLists();
     renderLeaderboard();
     renderH2H();
   });
 }
 
-window.switchRivalryTab = function(tab) {
-  ['log','leaderboard','h2h'].forEach(t => {
-    document.getElementById('rivalry-' + t).style.display = t === tab ? 'block' : 'none';
-    document.getElementById('rtab-' + t).classList.toggle('active', t === tab);
-  });
-  if (tab === 'leaderboard') renderLeaderboard();
-  if (tab === 'h2h') renderH2HSelects();
+// ── PLAYERS ──────────────────────────────────────────────
+async function syncPlayersFromFirebase(){
+  if(!db) return;
+  try {
+    const snap=await getDoc(doc(db,'config','players'));
+    if(snap.exists()){ players=snap.data().list||[]; saveLocalPlayers(); }
+    else if(players.length) await pushPlayersToFirebase();
+  } catch(e){}
+  renderPlayers();
+  renderPlayersGrid();
+  checkIdentity();
+}
+
+async function pushPlayersToFirebase(){
+  if(!db) return;
+  await setDoc(doc(db,'config','players'),{list:players});
+}
+
+async function pushRateToFirebase(){
+  if(!db) return;
+  await setDoc(doc(db,'config','rate'),{value:rate});
+}
+
+function renderPlayers(){
+  const el=document.getElementById('player-list');
+  if(!el) return;
+  if(!players.length){el.innerHTML='<span style="color:var(--muted);font-size:13px;">No players yet</span>';return;}
+  el.innerHTML=players.map(p=>`
+    <div class="player-chip">
+      <span style="color:${colorFor(p)};font-weight:700;">${initials(p)}</span>${p}
+      <button onclick="window._removePlayer('${p.replace(/'/g,"\\'")}')">×</button>
+    </div>`).join('');
+}
+
+function renderPlayersGrid(){
+  const el=document.getElementById('players-grid');
+  if(!el) return;
+  if(!players.length){el.innerHTML='<div style="grid-column:span 2;color:var(--muted);font-size:13px;padding:20px 0;text-align:center;">Add players using the + Add Name button above</div>';return;}
+  el.innerHTML=players.map(p=>`
+    <div class="player-toggle ${selectedPlayers.has(p)?'selected':''}" onclick="window._togglePlayer('${p.replace(/'/g,"\\'")}')">
+      <div class="avatar" style="background:${colorFor(p)}22;color:${colorFor(p)}">${initials(p)}</div>
+      <div class="name">${p}</div>
+      <div class="check">✅</div>
+    </div>`).join('');
+}
+
+function renderPlayerListRecord(){
+  const el=document.getElementById('player-list-record');
+  if(!el) return;
+  if(!players.length){el.innerHTML='<span style="color:var(--muted);font-size:13px;">No players yet</span>';return;}
+  el.innerHTML=players.map(p=>`
+    <div class="player-chip">
+      <span style="color:${colorFor(p)};font-weight:700;">${initials(p)}</span>${p}
+      <button onclick="window._removePlayerRecord('${p.replace(/'/g,"\\'")}')">×</button>
+    </div>`).join('');
+}
+
+window._togglePlayer=function(name){
+  if(selectedPlayers.has(name)) selectedPlayers.delete(name);
+  else selectedPlayers.add(name);
+  renderPlayersGrid();
+  updateHoursNote();
 };
 
-let currentMatchType = 'singles';
+window._removePlayer=async function(name){
+  players=players.filter(p=>p!==name);
+  saveLocalPlayers();
+  await pushPlayersToFirebase();
+  renderPlayers();
+  renderPlayersGrid();
+};
 
-window.setMatchType = function(type) {
-  currentMatchType = type;
-  document.getElementById('singles-form').style.display = type === 'singles' ? 'block' : 'none';
-  document.getElementById('doubles-form').style.display = type === 'doubles' ? 'block' : 'none';
-  // toggle button styles
-  const sBtn = document.getElementById('match-type-singles');
-  const dBtn = document.getElementById('match-type-doubles');
-  if (type === 'singles') {
-    sBtn.style.cssText = 'flex:1; padding:9px; border-radius:8px; font-family:Syne,sans-serif; font-size:13px; font-weight:700; cursor:pointer; border:2px solid var(--accent); background:rgba(57,211,83,0.12); color:var(--accent); transition:all 0.15s;';
-    dBtn.style.cssText = 'flex:1; padding:9px; border-radius:8px; font-family:Syne,sans-serif; font-size:13px; font-weight:700; cursor:pointer; border:2px solid var(--border); background:var(--surface); color:var(--muted); transition:all 0.15s;';
+window._removePlayerRecord=async function(name){
+  players=players.filter(p=>p!==name);
+  selectedPlayers.delete(name);
+  saveLocalPlayers();
+  await pushPlayersToFirebase();
+  renderPlayers();
+  renderPlayerListRecord();
+  renderPlayersGrid();
+  showToast(name+' removed');
+};
+
+window.addPlayer=async function(){
+  const inp=document.getElementById('new-player');
+  if(!inp) return;
+  const name=inp.value.trim();
+  if(!name) return;
+  if(players.includes(name)){showToast('Already added!',true);return;}
+  players.push(name); inp.value='';
+  saveLocalPlayers();
+  await pushPlayersToFirebase();
+  renderPlayers(); renderPlayersGrid();
+  showToast('Added '+name);
+};
+
+window.addPlayerFromRecord=async function(){
+  const inp=document.getElementById('new-player-record');
+  if(!inp) return;
+  const name=inp.value.trim();
+  if(!name) return;
+  if(players.includes(name)){showToast('Already added!',true);return;}
+  players.push(name); inp.value='';
+  saveLocalPlayers();
+  await pushPlayersToFirebase();
+  renderPlayers(); renderPlayerListRecord(); renderPlayersGrid();
+  showToast('Added '+name);
+};
+
+window.removePlayer=window._removePlayer;
+window.removePlayerFromRecord=window._removePlayerRecord;
+
+window.toggleAddPlayer=function(){
+  const panel=document.getElementById('add-player-panel');
+  const btn=document.getElementById('add-player-btn');
+  const isOpen=panel.style.display!=='none';
+  panel.style.display=isOpen?'none':'block';
+  btn.textContent=isOpen?'+ Add Name':'✕ Close';
+  if(!isOpen) renderPlayerListRecord();
+};
+
+// ── HOURS ─────────────────────────────────────────────────
+window.changeHours=function(delta){
+  sessionHours=Math.max(0.5,Math.round((sessionHours+delta)*2)/2);
+  document.getElementById('hours-display').textContent=sessionHours;
+  updateHoursNote();
+};
+function updateHoursNote(){
+  const el=document.getElementById('hours-note');
+  if(el) el.textContent=sessionHours;
+}
+
+// ── RATE ──────────────────────────────────────────────────
+window.toggleRateEditor=function(){
+  const editor=document.getElementById('rate-editor');
+  const btn=document.getElementById('rate-edit-btn');
+  const isOpen=editor.style.display==='block';
+  editor.style.display=isOpen?'none':'block';
+  btn.textContent=isOpen?'✏️ Change':'✕ Close';
+  if(!isOpen) document.getElementById('rate-input-record').value=rate;
+};
+
+window.saveRateFromRecord=async function(){
+  const val=parseFloat(document.getElementById('rate-input-record').value);
+  if(!val||val<1){showToast('Enter a valid rate!',true);return;}
+  rate=val;
+  localStorage.setItem('rate',rate);
+  document.getElementById('rate-display-record').textContent=rate;
+  const si=document.getElementById('rate-input');
+  if(si) si.value=rate;
+  document.getElementById('rate-editor').style.display='none';
+  document.getElementById('rate-edit-btn').textContent='✏️ Change';
+  await pushRateToFirebase();
+  renderSummary();
+  showToast('✅ Rate updated for everyone to ₹'+rate+'/hr');
+};
+
+window.saveRate=function(){
+  rate=parseFloat(document.getElementById('rate-input').value)||50;
+  localStorage.setItem('rate',rate);
+  showToast('Rate saved: ₹'+rate+'/hr');
+};
+
+window.saveFirebaseConfig=async function(){
+  const cfg={
+    apiKey:document.getElementById('cfg-apiKey').value.trim(),
+    authDomain:document.getElementById('cfg-authDomain').value.trim(),
+    projectId:document.getElementById('cfg-projectId').value.trim(),
+    appId:document.getElementById('cfg-appId').value.trim(),
+    storageBucket:document.getElementById('cfg-projectId').value.trim()+'.appspot.com',
+    messagingSenderId:'000000000000'
+  };
+  if(!cfg.apiKey||!cfg.projectId){showToast('Please fill API Key and Project ID',true);return;}
+  localStorage.setItem('fbConfig',JSON.stringify(cfg));
+  const ok=await connectFirebase(cfg);
+  if(ok) showToast('🔥 Firebase connected!');
+  else showToast('❌ Connection failed',true);
+};
+
+// ── SESSIONS ──────────────────────────────────────────────
+window.saveSession=async function(){
+  if(!db){showToast('Not connected!',true);return;}
+  const dateVal=document.getElementById('session-date').value;
+  if(!dateVal){showToast('Pick a date first!',true);return;}
+  if(selectedPlayers.size===0){showToast('Select at least one player!',true);return;}
+  try {
+    await addDoc(collection(db,'sessions'),{
+      date:dateVal, hours:sessionHours, rate:rate,
+      players:[...selectedPlayers], createdAt:new Date().toISOString()
+    });
+    selectedPlayers.clear();
+    renderPlayersGrid();
+    showToast('✅ Session saved!');
+  } catch(e){showToast('Error: '+e.message,true);}
+};
+
+window.clearAllSessions=async function(){
+  if(!db){showToast('Not connected!',true);return;}
+  if(sessions.length===0){showToast('No sessions to clear!',true);return;}
+  if(!confirm(`⚠️ Delete all ${sessions.length} session(s)?\n\nPlayer names and rate will be kept.`)) return;
+  try {
+    const snap=await getDocs(collection(db,'sessions'));
+    await Promise.all(snap.docs.map(d=>deleteDoc(doc(db,'sessions',d.id))));
+    showToast('✅ All sessions cleared!');
+  } catch(e){showToast('Error: '+e.message,true);}
+};
+
+window.deleteSession=async function(id){
+  if(!db) return;
+  if(!confirm('Delete this session?')) return;
+  try {
+    await deleteDoc(doc(db,'sessions',id));
+    showToast('Session deleted');
+  } catch(e){showToast('Error: '+e.message,true);}
+};
+
+function renderSessionsList(){
+  const el=document.getElementById('sessions-list');
+  if(!el) return;
+  if(!sessions.length){
+    el.innerHTML='<div class="no-data"><div class="icon">📭</div>No sessions recorded yet.<br>Go to Record tab to add one!</div>';
+    return;
+  }
+  el.innerHTML=sessions.map(s=>`
+    <div class="session-card">
+      <div class="session-header">
+        <div class="session-date">${fmtDate(s.date)}</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="session-hours">${s.hours}h · ₹${s.rate||rate}/hr</div>
+          <button class="session-delete" onclick="deleteSession('${s.id}')">🗑</button>
+        </div>
+      </div>
+      <div class="session-players">
+        ${(s.players||[]).map(p=>`<div class="mini-chip" style="border-color:${colorFor(p)}44;color:${colorFor(p)}">${p}</div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+// ── SUMMARY ───────────────────────────────────────────────
+window.changeMonth=function(delta){summaryMonthOffset+=delta;renderSummary();};
+
+function renderSummary(){
+  const now=new Date();
+  const target=new Date(now.getFullYear(),now.getMonth()+summaryMonthOffset,1);
+  const yr=target.getFullYear(), mo=target.getMonth();
+  document.getElementById('month-label').textContent=target.toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  const ms=sessions.filter(s=>{const d=new Date(s.date+'T00:00:00');return d.getFullYear()===yr&&d.getMonth()===mo;});
+  document.getElementById('stat-sessions').textContent=ms.length;
+  document.getElementById('stat-hours').textContent=ms.reduce((a,s)=>a+(s.hours||0),0);
+  const dues={};
+  for(const s of ms) for(const p of(s.players||[])){
+    if(!dues[p]) dues[p]={amount:0,hours:0};
+    dues[p].amount+=(s.hours||0)*(s.rate||rate);
+    dues[p].hours+=(s.hours||0);
+  }
+  const el=document.getElementById('dues-list');
+  const entries=Object.entries(dues).sort((a,b)=>b[1].amount-a[1].amount);
+  if(!entries.length){el.innerHTML='<div class="no-data"><div class="icon">💸</div>No sessions this month yet.</div>';return;}
+  el.innerHTML=entries.map(([name,{amount,hours}])=>`
+    <div class="due-row">
+      <div class="due-avatar" style="background:${colorFor(name)}22;color:${colorFor(name)}">${initials(name)}</div>
+      <div class="due-info">
+        <div class="due-name">${name}</div>
+        <div class="due-hours">${hours} hour${hours!==1?'s':''} played</div>
+      </div>
+      <div class="due-amount">₹${Math.round(amount)}<span>DUE</span></div>
+    </div>`).join('');
+}
+
+// ── TABS ──────────────────────────────────────────────────
+window.switchTab=function(tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+  document.getElementById('page-'+tab).classList.add('active');
+  if(tab==='summary') renderSummary();
+  if(tab==='rivalry'){ populateMatchSelects(); renderMatchLists(); renderLeaderboard(); renderH2HSelects(); }
+};
+
+// ── IDENTITY ──────────────────────────────────────────────
+function showIdentityOverlay(){
+  const overlay=document.getElementById('identity-overlay');
+  overlay.style.display='block';
+  const el=document.getElementById('identity-player-list');
+  if(!players.length){
+    el.innerHTML='<p style="color:#8b949e;font-size:13px;text-align:center;padding:20px 0;">No players added yet.<br>Ask your admin to add players first.</p>';
+    return;
+  }
+  el.innerHTML=players.map(p=>`
+    <div onclick="window.__setIdentity('${p.replace(/'/g,"\\'")}');"
+      style="background:#1c2333;border:1.5px solid #30363d;border-radius:12px;padding:16px;color:#e6edf3;font-family:'DM Sans',sans-serif;font-size:16px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:12px;width:100%;">
+      <div style="width:42px;height:42px;border-radius:50%;background:${colorFor(p)}22;color:${colorFor(p)};display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;flex-shrink:0;">${initials(p)}</div>
+      <span>${p}</span>
+      <span style="margin-left:auto;font-size:18px;color:#8b949e;">›</span>
+    </div>`).join('');
+}
+
+window.__setIdentity=function(name){
+  localStorage.setItem('badminton_identity',name);
+  document.getElementById('identity-overlay').style.display='none';
+  document.getElementById('identity-badge').style.display='flex';
+  document.getElementById('identity-name-badge').textContent=name;
+  renderMatchLists();
+};
+
+window.changeIdentity=function(){ showIdentityOverlay(); };
+
+function checkIdentity(){
+  const saved=localStorage.getItem('badminton_identity');
+  if(saved&&players.includes(saved)){
+    document.getElementById('identity-badge').style.display='flex';
+    document.getElementById('identity-name-badge').textContent=saved;
+  } else if(players.length>0){
+    showIdentityOverlay();
+  }
+}
+
+// ── MATCH TYPE TOGGLE ─────────────────────────────────────
+window.setMatchType=function(type){
+  currentMatchType=type;
+  document.getElementById('singles-form').style.display=type==='singles'?'block':'none';
+  document.getElementById('doubles-form').style.display=type==='doubles'?'block':'none';
+  const sBtn=document.getElementById('match-type-singles');
+  const dBtn=document.getElementById('match-type-doubles');
+  if(type==='singles'){
+    sBtn.style.cssText='flex:1;padding:9px;border-radius:8px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:2px solid #39d353;background:rgba(57,211,83,0.12);color:#39d353;';
+    dBtn.style.cssText='flex:1;padding:9px;border-radius:8px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:2px solid #30363d;background:#161b22;color:#8b949e;';
   } else {
-    dBtn.style.cssText = 'flex:1; padding:9px; border-radius:8px; font-family:Syne,sans-serif; font-size:13px; font-weight:700; cursor:pointer; border:2px solid var(--accent2); background:rgba(88,166,255,0.12); color:var(--accent2); transition:all 0.15s;';
-    sBtn.style.cssText = 'flex:1; padding:9px; border-radius:8px; font-family:Syne,sans-serif; font-size:13px; font-weight:700; cursor:pointer; border:2px solid var(--border); background:var(--surface); color:var(--muted); transition:all 0.15s;';
+    dBtn.style.cssText='flex:1;padding:9px;border-radius:8px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:2px solid #58a6ff;background:rgba(88,166,255,0.12);color:#58a6ff;';
+    sBtn.style.cssText='flex:1;padding:9px;border-radius:8px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:2px solid #30363d;background:#161b22;color:#8b949e;';
   }
 };
 
-function populateMatchSelects() {
-  const opts = '<option value="">Select...</option>' + players.map(p => `<option value="${p}">${p}</option>`).join('');
-  ['match-p1','match-p2','match-a1','match-a2','match-b1','match-b2'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = opts;
+// ── MATCH SELECTS ─────────────────────────────────────────
+function populateMatchSelects(){
+  const opts='<option value="">Select...</option>'+players.map(p=>`<option value="${p}">${p}</option>`).join('');
+  ['match-p1','match-p2','match-a1','match-a2','match-b1','match-b2'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.innerHTML=opts;
   });
 }
 
-function renderH2HSelects() {
-  const opts = '<option value="">Select...</option>' + players.map(p => `<option value="${p}">${p}</option>`).join('');
-  ['h2h-p1','h2h-p2'].forEach(id => document.getElementById(id).innerHTML = opts);
+function renderH2HSelects(){
+  const opts='<option value="">Select...</option>'+players.map(p=>`<option value="${p}">${p}</option>`).join('');
+  ['h2h-p1','h2h-p2'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.innerHTML=opts;
+  });
 }
 
-window.logMatch = async function() {
-  if (!db) { showToast('Not connected!', true); return; }
-  const dateVal = document.getElementById('match-date').value;
-  if (!dateVal) { showToast('Pick a date!', true); return; }
-
-  if (currentMatchType === 'singles') {
-    const p1 = document.getElementById('match-p1').value;
-    const p2 = document.getElementById('match-p2').value;
-    const s1 = parseInt(document.getElementById('match-s1').value);
-    const s2 = parseInt(document.getElementById('match-s2').value);
-    if (!p1 || !p2) { showToast('Select both players!', true); return; }
-    if (p1 === p2) { showToast('Select two different players!', true); return; }
-    if (isNaN(s1) || isNaN(s2)) { showToast('Enter both scores!', true); return; }
-    if (s1 === s2) { showToast('Scores cannot be equal!', true); return; }
-    const winner = s1 > s2 ? p1 : p2;
-    const loser  = s1 > s2 ? p2 : p1;
+// ── LOG MATCH ─────────────────────────────────────────────
+window.logMatch=async function(){
+  if(!db){showToast('Not connected!',true);return;}
+  const dateVal=document.getElementById('match-date').value;
+  if(!dateVal){showToast('Pick a date!',true);return;}
+  if(currentMatchType==='singles'){
+    const p1=document.getElementById('match-p1').value;
+    const p2=document.getElementById('match-p2').value;
+    const s1=parseInt(document.getElementById('match-s1').value);
+    const s2=parseInt(document.getElementById('match-s2').value);
+    if(!p1||!p2){showToast('Select both players!',true);return;}
+    if(p1===p2){showToast('Select two different players!',true);return;}
+    if(isNaN(s1)||isNaN(s2)){showToast('Enter both scores!',true);return;}
+    if(s1===s2){showToast('Scores cannot be equal!',true);return;}
+    const winner=s1>s2?p1:p2, loser=s1>s2?p2:p1;
     try {
-      await addDoc(collection(db, 'matches'), {
-        type: 'singles', p1, p2, s1, s2, winner, loser,
-        winnerScore: Math.max(s1,s2), loserScore: Math.min(s1,s2),
-        date: dateVal, confirmed: false, loggedBy: p1,
-        createdAt: new Date().toISOString()
+      await addDoc(collection(db,'matches'),{
+        type:'singles',p1,p2,s1,s2,winner,loser,
+        winnerScore:Math.max(s1,s2),loserScore:Math.min(s1,s2),
+        date:dateVal,confirmed:false,loggedBy:p1,createdAt:new Date().toISOString()
       });
-      ['match-p1','match-p2','match-s1','match-s2'].forEach(id => document.getElementById(id).value = '');
+      ['match-p1','match-p2','match-s1','match-s2'].forEach(id=>document.getElementById(id).value='');
       showToast('📤 Singles match submitted!');
-    } catch(e) { showToast('Error: ' + e.message, true); }
-
+    } catch(e){showToast('Error: '+e.message,true);}
   } else {
-    const a1 = document.getElementById('match-a1').value;
-    const a2 = document.getElementById('match-a2').value;
-    const b1 = document.getElementById('match-b1').value;
-    const b2 = document.getElementById('match-b2').value;
-    const ds1 = parseInt(document.getElementById('match-ds1').value);
-    const ds2 = parseInt(document.getElementById('match-ds2').value);
-    if (!a1 || !a2 || !b1 || !b2) { showToast('Select all 4 players!', true); return; }
-    const allP = [a1, a2, b1, b2];
-    if (new Set(allP).size !== 4) { showToast('All 4 players must be different!', true); return; }
-    if (isNaN(ds1) || isNaN(ds2)) { showToast('Enter both scores!', true); return; }
-    if (ds1 === ds2) { showToast('Scores cannot be equal!', true); return; }
-    const teamAWon = ds1 > ds2;
-    const winningTeam  = teamAWon ? [a1, a2] : [b1, b2];
-    const losingTeam   = teamAWon ? [b1, b2] : [a1, a2];
+    const a1=document.getElementById('match-a1').value;
+    const a2=document.getElementById('match-a2').value;
+    const b1=document.getElementById('match-b1').value;
+    const b2=document.getElementById('match-b2').value;
+    const ds1=parseInt(document.getElementById('match-ds1').value);
+    const ds2=parseInt(document.getElementById('match-ds2').value);
+    if(!a1||!a2||!b1||!b2){showToast('Select all 4 players!',true);return;}
+    if(new Set([a1,a2,b1,b2]).size!==4){showToast('All 4 players must be different!',true);return;}
+    if(isNaN(ds1)||isNaN(ds2)){showToast('Enter both scores!',true);return;}
+    if(ds1===ds2){showToast('Scores cannot be equal!',true);return;}
+    const teamAWon=ds1>ds2;
+    const winningTeam=teamAWon?[a1,a2]:[b1,b2];
+    const losingTeam=teamAWon?[b1,b2]:[a1,a2];
     try {
-      await addDoc(collection(db, 'matches'), {
-        type: 'doubles',
-        teamA: [a1, a2], teamB: [b1, b2],
-        scoreA: ds1, scoreB: ds2,
-        winningTeam, losingTeam,
-        date: dateVal, confirmed: false, loggedBy: a1,
-        createdAt: new Date().toISOString()
+      await addDoc(collection(db,'matches'),{
+        type:'doubles',teamA:[a1,a2],teamB:[b1,b2],
+        scoreA:ds1,scoreB:ds2,winningTeam,losingTeam,
+        date:dateVal,confirmed:false,loggedBy:a1,createdAt:new Date().toISOString()
       });
-      ['match-a1','match-a2','match-b1','match-b2','match-ds1','match-ds2'].forEach(id => document.getElementById(id).value = '');
+      ['match-a1','match-a2','match-b1','match-b2','match-ds1','match-ds2'].forEach(id=>document.getElementById(id).value='');
       showToast('📤 Doubles match submitted!');
-    } catch(e) { showToast('Error: ' + e.message, true); }
+    } catch(e){showToast('Error: '+e.message,true);}
   }
 };
 
-window.confirmMatch = async function(id) {
-  if (!db) return;
-  try {
-    await setDoc(doc(db, 'matches', id), { confirmed: true }, { merge: true });
-    showToast('✅ Match confirmed!');
-  } catch(e) { showToast('Error: ' + e.message, true); }
+window.confirmMatch=async function(id){
+  if(!db) return;
+  try { await setDoc(doc(db,'matches',id),{confirmed:true},{merge:true}); showToast('✅ Match confirmed!'); }
+  catch(e){showToast('Error: '+e.message,true);}
 };
 
-window.deleteMatch = async function(id) {
-  if (!confirm('Delete this match?')) return;
-  try {
-    await deleteDoc(doc(db, 'matches', id));
-    showToast('Match deleted');
-  } catch(e) { showToast('Error: ' + e.message, true); }
+window.deleteMatch=async function(id){
+  if(!confirm('Delete this match?')) return;
+  try { await deleteDoc(doc(db,'matches',id)); showToast('Match deleted'); }
+  catch(e){showToast('Error: '+e.message,true);}
 };
 
-function renderMatchLists() {
-  const currentUser = localStorage.getItem('badminton_identity') || '';
-  const pending   = matches.filter(m => !m.confirmed);
-  const confirmed = matches.filter(m => m.confirmed).slice(0, 20);
+// ── RENDER MATCHES ────────────────────────────────────────
+window.switchRivalryTab=function(tab){
+  ['log','leaderboard','h2h'].forEach(t=>{
+    document.getElementById('rivalry-'+t).style.display=t===tab?'block':'none';
+    document.getElementById('rtab-'+t).classList.toggle('active',t===tab);
+  });
+  if(tab==='leaderboard') renderLeaderboard();
+  if(tab==='h2h') renderH2HSelects();
+};
 
-  function matchCard(m, showConfirm) {
-    const isDoubles = m.type === 'doubles';
-    if (isDoubles) {
-      const tA = (m.teamA||[]).join(' & ');
-      const tB = (m.teamB||[]).join(' & ');
-      const aWon = m.scoreA > m.scoreB;
-      const inMatch = [...(m.teamA||[]),...(m.teamB||[])].includes(currentUser);
-      const isOpponent = inMatch && !(m.teamA||[]).includes(currentUser) === (m.teamA||[]).includes(m.loggedBy);
-      const canConfirm = showConfirm && inMatch && currentUser !== m.loggedBy;
-      const confirmEl = showConfirm
-        ? canConfirm
-          ? `<button class="confirm-btn" onclick="confirmMatch('${m.id}')">✅ Confirm</button>`
-          : inMatch
-            ? `<span style="font-size:11px;color:var(--muted);">Waiting for opponent</span>`
-            : `<span style="font-size:11px;color:var(--muted);">Awaiting confirmation</span>`
-        : `<div class="match-winner-tag">🏆 Winners: <span>${(m.winningTeam||[]).join(' & ')}</span></div>`;
-      return `
-        <div class="match-card">
-          <div class="match-card-top">
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span style="background:rgba(88,166,255,0.15);border:1px solid rgba(88,166,255,0.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:var(--accent2);">🏸🏸 Doubles</span>
-              <span class="match-date">${fmtDate(m.date)}</span>
-            </div>
-            <div style="display:flex;gap:6px;align-items:center;">
-              ${showConfirm ? `<span class="pending-badge">⏳ Pending</span>` : `<span class="confirmed-badge">✅ Confirmed</span>`}
-              <button class="session-delete" onclick="deleteMatch('${m.id}')">🗑</button>
-            </div>
-          </div>
-          <div class="match-scoreline">
-            <div class="match-player">
-              <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:4px;">TEAM A</div>
-              <div style="font-size:12px;font-weight:600;text-align:center;color:var(--text);margin-bottom:6px;line-height:1.4;">${(m.teamA||[]).map(p=>`<div style="color:${colorFor(p)}">${p}</div>`).join('')}</div>
-              <div class="match-player-score ${aWon?'winner':'loser'}">${m.scoreA}</div>
-            </div>
-            <div class="match-vs">VS</div>
-            <div class="match-player">
-              <div style="font-size:11px;font-weight:700;color:var(--accent2);margin-bottom:4px;">TEAM B</div>
-              <div style="font-size:12px;font-weight:600;text-align:center;color:var(--text);margin-bottom:6px;line-height:1.4;">${(m.teamB||[]).map(p=>`<div style="color:${colorFor(p)}">${p}</div>`).join('')}</div>
-              <div class="match-player-score ${!aWon?'winner':'loser'}">${m.scoreB}</div>
-            </div>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;">${confirmEl}</div>
-        </div>`;
-    } else {
-      // singles
-      const inMatch = currentUser === m.p1 || currentUser === m.p2;
-      const canConfirm = showConfirm && inMatch && currentUser !== m.loggedBy;
-      const confirmEl = showConfirm
-        ? canConfirm
-          ? `<button class="confirm-btn" onclick="confirmMatch('${m.id}')">✅ Confirm Result</button>`
-          : inMatch
-            ? `<span style="font-size:11px;color:var(--muted);">Waiting for opponent</span>`
-            : `<span style="font-size:11px;color:var(--muted);">Awaiting confirmation</span>`
-        : `<div class="match-winner-tag">🏆 Winner: <span>${m.winner}</span></div>`;
-      return `
-        <div class="match-card">
-          <div class="match-card-top">
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span style="background:rgba(57,211,83,0.12);border:1px solid rgba(57,211,83,0.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:var(--accent);">🏸 Singles</span>
-              <span class="match-date">${fmtDate(m.date)}</span>
-            </div>
-            <div style="display:flex;gap:6px;align-items:center;">
-              ${showConfirm ? `<span class="pending-badge">⏳ Pending</span>` : `<span class="confirmed-badge">✅ Confirmed</span>`}
-              <button class="session-delete" onclick="deleteMatch('${m.id}')">🗑</button>
-            </div>
-          </div>
-          <div class="match-scoreline">
-            <div class="match-player">
-              <div class="match-player-name" style="color:${colorFor(m.p1)}">${m.p1}</div>
-              <div class="match-player-score ${m.winner===m.p1?'winner':'loser'}">${m.s1}</div>
-            </div>
-            <div class="match-vs">VS</div>
-            <div class="match-player">
-              <div class="match-player-name" style="color:${colorFor(m.p2)}">${m.p2}</div>
-              <div class="match-player-score ${m.winner===m.p2?'winner':'loser'}">${m.s2}</div>
-            </div>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;">${confirmEl}</div>
-        </div>`;
-    }
+function renderMatchLists(){
+  const cu=localStorage.getItem('badminton_identity')||'';
+  const pending=matches.filter(m=>!m.confirmed);
+  const confirmed=matches.filter(m=>m.confirmed).slice(0,20);
+
+  function card(m,isPending){
+    const isD=m.type==='doubles';
+    const aWon=isD?(m.scoreA>m.scoreB):null;
+    const inMatch=isD?[...(m.teamA||[]),...(m.teamB||[])].includes(cu):(cu===m.p1||cu===m.p2);
+    const canConfirm=isPending&&inMatch&&cu!==m.loggedBy;
+    const actionEl=isPending
+      ?(canConfirm?`<button class="confirm-btn" onclick="confirmMatch('${m.id}')">✅ Confirm</button>`
+        :inMatch?`<span style="font-size:11px;color:var(--muted);">Waiting for opponent</span>`
+               :`<span style="font-size:11px;color:var(--muted);">Awaiting confirmation</span>`)
+      :(isD?`<div class="match-winner-tag">🏆 <span>${(m.winningTeam||[]).join(' & ')}</span></div>`
+           :`<div class="match-winner-tag">🏆 Winner: <span>${m.winner}</span></div>`);
+    const typeBadge=isD
+      ?`<span style="background:rgba(88,166,255,0.15);border:1px solid rgba(88,166,255,0.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:#58a6ff;">🏸🏸 Doubles</span>`
+      :`<span style="background:rgba(57,211,83,0.12);border:1px solid rgba(57,211,83,0.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:#39d353;">🏸 Singles</span>`;
+    const scoreSection=isD?`
+      <div class="match-scoreline">
+        <div class="match-player">
+          <div style="font-size:11px;font-weight:700;color:#39d353;margin-bottom:4px;">TEAM A</div>
+          <div style="font-size:12px;font-weight:600;text-align:center;margin-bottom:6px;line-height:1.6;">${(m.teamA||[]).map(p=>`<div style="color:${colorFor(p)}">${p}</div>`).join('')}</div>
+          <div class="match-player-score ${aWon?'winner':'loser'}">${m.scoreA}</div>
+        </div>
+        <div class="match-vs">VS</div>
+        <div class="match-player">
+          <div style="font-size:11px;font-weight:700;color:#58a6ff;margin-bottom:4px;">TEAM B</div>
+          <div style="font-size:12px;font-weight:600;text-align:center;margin-bottom:6px;line-height:1.6;">${(m.teamB||[]).map(p=>`<div style="color:${colorFor(p)}">${p}</div>`).join('')}</div>
+          <div class="match-player-score ${!aWon?'winner':'loser'}">${m.scoreB}</div>
+        </div>
+      </div>`:`
+      <div class="match-scoreline">
+        <div class="match-player">
+          <div class="match-player-name" style="color:${colorFor(m.p1)}">${m.p1}</div>
+          <div class="match-player-score ${m.winner===m.p1?'winner':'loser'}">${m.s1}</div>
+        </div>
+        <div class="match-vs">VS</div>
+        <div class="match-player">
+          <div class="match-player-name" style="color:${colorFor(m.p2)}">${m.p2}</div>
+          <div class="match-player-score ${m.winner===m.p2?'winner':'loser'}">${m.s2}</div>
+        </div>
+      </div>`;
+    return `<div class="match-card">
+      <div class="match-card-top">
+        <div style="display:flex;align-items:center;gap:6px;">${typeBadge}<span class="match-date">${fmtDate(m.date)}</span></div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          ${isPending?`<span class="pending-badge">⏳ Pending</span>`:`<span class="confirmed-badge">✅ Confirmed</span>`}
+          <button class="session-delete" onclick="deleteMatch('${m.id}')">🗑</button>
+        </div>
+      </div>
+      ${scoreSection}
+      <div style="display:flex;justify-content:space-between;align-items:center;">${actionEl}</div>
+    </div>`;
   }
 
-  const pel = document.getElementById('pending-matches');
-  pel.innerHTML = pending.length
-    ? pending.map(m => matchCard(m, true)).join('')
-    : '<div class="no-data" style="padding:16px 0;"><div class="icon" style="font-size:28px;">✅</div>No pending matches</div>';
-
-  const cel = document.getElementById('confirmed-matches');
-  cel.innerHTML = confirmed.length
-    ? confirmed.map(m => matchCard(m, false)).join('')
-    : '<div class="no-data" style="padding:16px 0;"><div class="icon" style="font-size:28px;">🏸</div>No confirmed matches yet</div>';
+  const pel=document.getElementById('pending-matches');
+  if(pel) pel.innerHTML=pending.length?pending.map(m=>card(m,true)).join('')
+    :'<div class="no-data" style="padding:16px 0;"><div class="icon" style="font-size:28px;">✅</div>No pending matches</div>';
+  const cel=document.getElementById('confirmed-matches');
+  if(cel) cel.innerHTML=confirmed.length?confirmed.map(m=>card(m,false)).join('')
+    :'<div class="no-data" style="padding:16px 0;"><div class="icon" style="font-size:28px;">🏸</div>No confirmed matches yet</div>';
 }
 
-function renderLeaderboard() {
-  const confirmed = matches.filter(m => m.confirmed);
-  const stats = {};
-  for (const p of players) stats[p] = { w:0, l:0, sw:0, sl:0, dw:0, dl:0 };
-
-  for (const m of confirmed) {
-    if (m.type === 'doubles') {
-      // each player in winning team gets a win, losing team gets a loss
-      for (const p of (m.winningTeam||[])) {
-        if (!stats[p]) stats[p] = { w:0, l:0, sw:0, sl:0, dw:0, dl:0 };
-        stats[p].w++; stats[p].dw++;
-      }
-      for (const p of (m.losingTeam||[])) {
-        if (!stats[p]) stats[p] = { w:0, l:0, sw:0, sl:0, dw:0, dl:0 };
-        stats[p].l++; stats[p].dl++;
-      }
+// ── LEADERBOARD ───────────────────────────────────────────
+function renderLeaderboard(){
+  const confirmed=matches.filter(m=>m.confirmed);
+  const stats={};
+  for(const p of players) stats[p]={w:0,l:0,sw:0,sl:0,dw:0,dl:0};
+  for(const m of confirmed){
+    if(m.type==='doubles'){
+      for(const p of(m.winningTeam||[])){if(!stats[p])stats[p]={w:0,l:0,sw:0,sl:0,dw:0,dl:0};stats[p].w++;stats[p].dw++;}
+      for(const p of(m.losingTeam||[])) {if(!stats[p])stats[p]={w:0,l:0,sw:0,sl:0,dw:0,dl:0};stats[p].l++;stats[p].dl++;}
     } else {
-      // singles
-      if (!stats[m.winner]) stats[m.winner] = { w:0, l:0, sw:0, sl:0, dw:0, dl:0 };
-      if (!stats[m.loser])  stats[m.loser]  = { w:0, l:0, sw:0, sl:0, dw:0, dl:0 };
-      stats[m.winner].w++; stats[m.winner].sw++;
-      stats[m.loser].l++;  stats[m.loser].sl++;
+      if(!stats[m.winner])stats[m.winner]={w:0,l:0,sw:0,sl:0,dw:0,dl:0};
+      if(!stats[m.loser]) stats[m.loser] ={w:0,l:0,sw:0,sl:0,dw:0,dl:0};
+      stats[m.winner].w++;stats[m.winner].sw++;
+      stats[m.loser].l++; stats[m.loser].sl++;
     }
   }
-
-  const entries = Object.entries(stats)
-    .map(([name, s]) => ({ name, ...s, total:s.w+s.l, pct: s.w+s.l===0 ? 0 : Math.round((s.w/(s.w+s.l))*100) }))
-    .sort((a,b) => b.pct - a.pct || b.total - a.total || b.w - a.w);
-
-  const el = document.getElementById('lb-list');
-  if (!entries.length) { el.innerHTML = '<div class="no-data" style="padding:20px;"><div class="icon">🏆</div>No matches yet</div>'; return; }
-  const syms = ['🥇','🥈','🥉'];
-  const cls  = ['gold','silver','bronze'];
-  el.innerHTML = entries.map((e,i) => `
+  const entries=Object.entries(stats)
+    .map(([name,s])=>({name,...s,total:s.w+s.l,pct:s.w+s.l===0?0:Math.round((s.w/(s.w+s.l))*100)}))
+    .sort((a,b)=>b.pct-a.pct||b.total-a.total||b.w-a.w);
+  const el=document.getElementById('lb-list');
+  if(!el) return;
+  if(!entries.length){el.innerHTML='<div class="no-data" style="padding:20px;"><div class="icon">🏆</div>No matches yet</div>';return;}
+  const syms=['🥇','🥈','🥉'],cls=['gold','silver','bronze'];
+  el.innerHTML=entries.map((e,i)=>`
     <div class="lb-row">
       <div class="lb-rank ${cls[i]||''}">${syms[i]||(i+1)}</div>
       <div class="lb-avatar" style="background:${colorFor(e.name)}22;color:${colorFor(e.name)}">${initials(e.name)}</div>
       <div class="lb-info">
         <div class="lb-name">${e.name}</div>
-        <div class="lb-record">${e.w}W — ${e.l}L &nbsp;·&nbsp; ${e.total} match${e.total!==1?'es':''}
-          ${e.sw+e.sl>0 ? `<span style="color:var(--accent);"> (${e.sw}W singles)</span>` : ''}
-          ${e.dw+e.dl>0 ? `<span style="color:var(--accent2);"> (${e.dw}W doubles)</span>` : ''}
-        </div>
+        <div class="lb-record">${e.w}W — ${e.l}L · ${e.total} match${e.total!==1?'es':''}${e.sw+e.sl>0?` <span style="color:#39d353">(${e.sw}W S)</span>`:''}${e.dw+e.dl>0?` <span style="color:#58a6ff">(${e.dw}W D)</span>`:''}</div>
         <div class="lb-bar-wrap"><div class="lb-bar" style="width:${e.pct}%;background:${colorFor(e.name)}"></div></div>
       </div>
       <div class="lb-winpct" style="color:${colorFor(e.name)}">${e.pct}%</div>
     </div>`).join('');
 }
 
-window.renderH2H = function() {
-  const p1 = document.getElementById('h2h-p1') ? document.getElementById('h2h-p1').value : '';
-  const p2 = document.getElementById('h2h-p2') ? document.getElementById('h2h-p2').value : '';
-  const el = document.getElementById('h2h-result');
-  if (!el) return;
-  if (!p1 || !p2) { el.innerHTML = '<div class="no-data" style="padding:20px 0;"><div class="icon">⚔️</div>Select two players above</div>'; return; }
-  if (p1 === p2) { el.innerHTML = '<div class="no-data" style="padding:20px 0;">Select two different players</div>'; return; }
-  const h2hMatches = matches.filter(m => m.confirmed && ((m.p1===p1&&m.p2===p2)||(m.p1===p2&&m.p2===p1)));
-  const p1wins = h2hMatches.filter(m => m.winner===p1).length;
-  const p2wins = h2hMatches.filter(m => m.winner===p2).length;
-  let p1c='tied', p2c='tied';
-  if (p1wins>p2wins){p1c='leading';p2c='trailing';}
+// ── H2H ───────────────────────────────────────────────────
+window.renderH2H=function(){
+  const p1el=document.getElementById('h2h-p1');
+  const p2el=document.getElementById('h2h-p2');
+  const el=document.getElementById('h2h-result');
+  if(!p1el||!p2el||!el) return;
+  const p1=p1el.value,p2=p2el.value;
+  if(!p1||!p2){el.innerHTML='<div class="no-data" style="padding:20px 0;"><div class="icon">⚔️</div>Select two players above</div>';return;}
+  if(p1===p2){el.innerHTML='<div class="no-data" style="padding:20px 0;">Select two different players</div>';return;}
+  const h2h=matches.filter(m=>m.confirmed&&(
+    (m.type!=='doubles'&&((m.p1===p1&&m.p2===p2)||(m.p1===p2&&m.p2===p1)))||
+    (m.type==='doubles'&&[...(m.teamA||[]),...(m.teamB||[])].includes(p1)&&[...(m.teamA||[]),...(m.teamB||[])].includes(p2))
+  ));
+  const p1wins=h2h.filter(m=>m.type==='doubles'?(m.winningTeam||[]).includes(p1):m.winner===p1).length;
+  const p2wins=h2h.filter(m=>m.type==='doubles'?(m.winningTeam||[]).includes(p2):m.winner===p2).length;
+  let p1c='tied',p2c='tied';
+  if(p1wins>p2wins){p1c='leading';p2c='trailing';}
   else if(p2wins>p1wins){p2c='leading';p1c='trailing';}
-  const history = h2hMatches.slice(0,10).map(m => {
-    const ms = m.p1===p1 ? m.s1 : m.s2;
-    const os = m.p1===p1 ? m.s2 : m.s1;
+  const history=h2h.slice(0,10).map(m=>{
+    const won=m.type==='doubles'?(m.winningTeam||[]).includes(p1):m.winner===p1;
+    const score=m.type==='doubles'?`${m.scoreA}—${m.scoreB}`:`${m.p1===p1?m.s1:m.s2}—${m.p1===p1?m.s2:m.s1}`;
     return `<div class="h2h-mini-match">
-      <div>${fmtDate(m.date)}</div>
-      <div class="h2h-mini-score">${ms} — ${os}</div>
-      <div style="font-size:11px;font-weight:700;color:${m.winner===p1?'var(--accent)':'var(--warn)'}">${m.winner===p1?'WIN':'LOSS'}</div>
+      <div>${m.type==='doubles'?'🏸🏸':'🏸'} ${fmtDate(m.date)}</div>
+      <div class="h2h-mini-score">${score}</div>
+      <div style="font-size:11px;font-weight:700;color:${won?'var(--accent)':'var(--warn)'}">${won?'WIN':'LOSS'}</div>
     </div>`;
   }).join('');
-  el.innerHTML = `
+  el.innerHTML=`
     <div class="h2h-matchup">
-      <div class="h2h-player">
-        <div class="h2h-player-name" style="color:${colorFor(p1)}">${p1}</div>
-        <div class="h2h-player-wins ${p1c}">${p1wins}</div>
-      </div>
+      <div class="h2h-player"><div class="h2h-player-name" style="color:${colorFor(p1)}">${p1}</div><div class="h2h-player-wins ${p1c}">${p1wins}</div></div>
       <div class="h2h-divider">WINS</div>
-      <div class="h2h-player">
-        <div class="h2h-player-name" style="color:${colorFor(p2)}">${p2}</div>
-        <div class="h2h-player-wins ${p2c}">${p2wins}</div>
-      </div>
+      <div class="h2h-player"><div class="h2h-player-name" style="color:${colorFor(p2)}">${p2}</div><div class="h2h-player-wins ${p2c}">${p2wins}</div></div>
     </div>
-    <div class="h2h-matches-label">${h2hMatches.length} confirmed match${h2hMatches.length!==1?'es':''} between them</div>
-    ${h2hMatches.length ? `<div class="section-title" style="margin-top:12px;">Match History</div>${history}` : ''}
+    <div class="h2h-matches-label">${h2h.length} match${h2h.length!==1?'es':''} (singles + doubles)</div>
+    ${h2h.length?`<div class="section-title" style="margin-top:12px;">Match History</div>${history}`:''}
   `;
 };
+
+// ── INIT ──────────────────────────────────────────────────
+(async function init(){
+  const FIREBASE_CONFIG={
+    apiKey:"AIzaSyB2k6O_5EJNt9QeUG0xXFw4tc1CoKb5tMk",
+    authDomain:"badminton-attendance-tracker.firebaseapp.com",
+    projectId:"badminton-attendance-tracker",
+    storageBucket:"badminton-attendance-tracker.firebasestorage.app",
+    messagingSenderId:"1004212985506",
+    appId:"1:1004212985506:web:ca92db30fab1f3a0d041fb",
+    measurementId:"G-ZN3S7RLGN2"
+  };
+  localStorage.setItem('fbConfig',JSON.stringify(FIREBASE_CONFIG));
+
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('session-date').value=today;
+  document.getElementById('match-date').value=today;
+
+  loadLocalPlayers();
+  renderPlayers();
+  renderPlayersGrid();
+
+  const r=localStorage.getItem('rate');
+  if(r){rate=parseFloat(r);}
+  document.getElementById('rate-display-record').textContent=rate;
+
+  setFbStatus(false);
+  await connectFirebase(FIREBASE_CONFIG);
+})();
+
 </script>
 </body>
 </html>
