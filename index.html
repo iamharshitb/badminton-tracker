@@ -1119,24 +1119,68 @@
   <div id="rivalry-log">
     <div class="match-form">
       <h3>⚔️ Log a Match</h3>
-      <div style="margin-bottom:10px;">
+
+      <!-- Singles / Doubles toggle -->
+      <div style="display:flex; gap:8px; margin-bottom:14px;">
+        <button id="match-type-singles" onclick="setMatchType('singles')"
+          style="flex:1; padding:9px; border-radius:8px; font-family:'Syne',sans-serif; font-size:13px; font-weight:700; cursor:pointer; border:2px solid var(--accent); background:rgba(57,211,83,0.12); color:var(--accent); transition:all 0.15s;">
+          🏸 Singles
+        </button>
+        <button id="match-type-doubles" onclick="setMatchType('doubles')"
+          style="flex:1; padding:9px; border-radius:8px; font-family:'Syne',sans-serif; font-size:13px; font-weight:700; cursor:pointer; border:2px solid var(--border); background:var(--surface); color:var(--muted); transition:all 0.15s;">
+          🏸🏸 Doubles
+        </button>
+      </div>
+
+      <div style="margin-bottom:12px;">
         <label>Date</label>
         <input type="date" id="match-date" style="margin-bottom:0;"/>
       </div>
-      <label style="margin-bottom:6px;">Players</label>
-      <div class="vs-selector">
-        <select class="player-select" id="match-p1"><option value="">Player 1</option></select>
-        <div class="vs-badge">VS</div>
-        <select class="player-select" id="match-p2"><option value="">Player 2</option></select>
+
+      <!-- SINGLES FORM -->
+      <div id="singles-form">
+        <label style="margin-bottom:6px;">Players</label>
+        <div class="vs-selector">
+          <select class="player-select" id="match-p1"><option value="">Player 1</option></select>
+          <div class="vs-badge">VS</div>
+          <select class="player-select" id="match-p2"><option value="">Player 2</option></select>
+        </div>
+        <label style="margin-bottom:6px;">Score</label>
+        <div class="score-row">
+          <input type="number" class="score-input" id="match-s1" placeholder="21" min="0" max="99"/>
+          <div class="score-dash">—</div>
+          <input type="number" class="score-input" id="match-s2" placeholder="15" min="0" max="99"/>
+        </div>
       </div>
-      <label style="margin-bottom:6px;">Score</label>
-      <div class="score-row">
-        <input type="number" class="score-input" id="match-s1" placeholder="21" min="0" max="99"/>
-        <div class="score-dash">—</div>
-        <input type="number" class="score-input" id="match-s2" placeholder="15" min="0" max="99"/>
+
+      <!-- DOUBLES FORM -->
+      <div id="doubles-form" style="display:none;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+          <div>
+            <label style="color:var(--accent); margin-bottom:6px;">Team A</label>
+            <select class="player-select" id="match-a1" style="margin-bottom:8px;"><option value="">Player 1</option></select>
+            <select class="player-select" id="match-a2"><option value="">Player 2</option></select>
+          </div>
+          <div>
+            <label style="color:var(--accent2); margin-bottom:6px;">Team B</label>
+            <select class="player-select" id="match-b1" style="margin-bottom:8px;"><option value="">Player 1</option></select>
+            <select class="player-select" id="match-b2"><option value="">Player 2</option></select>
+          </div>
+        </div>
+        <label style="margin-bottom:6px;">Score</label>
+        <div class="score-row">
+          <input type="number" class="score-input" id="match-ds1" placeholder="21" min="0" max="99" style="border-color:rgba(57,211,83,0.4);"/>
+          <div class="score-dash">—</div>
+          <input type="number" class="score-input" id="match-ds2" placeholder="15" min="0" max="99" style="border-color:rgba(88,166,255,0.4);"/>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:-6px; margin-bottom:12px; padding:0 2px;">
+          <span style="color:var(--accent);">← Team A</span>
+          <span style="color:var(--accent2);">Team B →</span>
+        </div>
       </div>
+
       <button class="btn btn-primary btn-full" onclick="logMatch()">📤 Submit Match</button>
-      <p style="font-size:11px;color:var(--muted);margin-top:10px;text-align:center;">The other player will need to confirm this result.</p>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;text-align:center;">The opponent(s) will need to confirm this result.</p>
     </div>
 
     <!-- Pending confirmations -->
@@ -1264,8 +1308,9 @@ async function connectFirebase(cfg) {
     setFbStatus(true);
     subscribeToSessions();
     subscribeToRate();
-    subscribeToMatches();
     await syncPlayersFromFirebase();
+    // matches subscription separately so index errors don't break the app
+    try { subscribeToMatches(); } catch(e) { console.warn('Matches subscription:', e); }
     return true;
   } catch (e) {
     console.error(e);
@@ -1734,9 +1779,11 @@ let unsubscribeMatches = null;
 function subscribeToMatches() {
   if (!db) return;
   if (unsubscribeMatches) unsubscribeMatches();
-  const q = query(collection(db, 'matches'), orderBy('date', 'desc'));
-  unsubscribeMatches = onSnapshot(q, snap => {
-    matches = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  // No orderBy — avoids needing a Firestore index. Sort in JS instead.
+  unsubscribeMatches = onSnapshot(collection(db, 'matches'), snap => {
+    matches = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     renderMatchLists();
     renderLeaderboard();
     renderH2H();
@@ -1752,9 +1799,30 @@ window.switchRivalryTab = function(tab) {
   if (tab === 'h2h') renderH2HSelects();
 };
 
+let currentMatchType = 'singles';
+
+window.setMatchType = function(type) {
+  currentMatchType = type;
+  document.getElementById('singles-form').style.display = type === 'singles' ? 'block' : 'none';
+  document.getElementById('doubles-form').style.display = type === 'doubles' ? 'block' : 'none';
+  // toggle button styles
+  const sBtn = document.getElementById('match-type-singles');
+  const dBtn = document.getElementById('match-type-doubles');
+  if (type === 'singles') {
+    sBtn.style.cssText = 'flex:1; padding:9px; border-radius:8px; font-family:Syne,sans-serif; font-size:13px; font-weight:700; cursor:pointer; border:2px solid var(--accent); background:rgba(57,211,83,0.12); color:var(--accent); transition:all 0.15s;';
+    dBtn.style.cssText = 'flex:1; padding:9px; border-radius:8px; font-family:Syne,sans-serif; font-size:13px; font-weight:700; cursor:pointer; border:2px solid var(--border); background:var(--surface); color:var(--muted); transition:all 0.15s;';
+  } else {
+    dBtn.style.cssText = 'flex:1; padding:9px; border-radius:8px; font-family:Syne,sans-serif; font-size:13px; font-weight:700; cursor:pointer; border:2px solid var(--accent2); background:rgba(88,166,255,0.12); color:var(--accent2); transition:all 0.15s;';
+    sBtn.style.cssText = 'flex:1; padding:9px; border-radius:8px; font-family:Syne,sans-serif; font-size:13px; font-weight:700; cursor:pointer; border:2px solid var(--border); background:var(--surface); color:var(--muted); transition:all 0.15s;';
+  }
+};
+
 function populateMatchSelects() {
   const opts = '<option value="">Select...</option>' + players.map(p => `<option value="${p}">${p}</option>`).join('');
-  ['match-p1','match-p2'].forEach(id => document.getElementById(id).innerHTML = opts);
+  ['match-p1','match-p2','match-a1','match-a2','match-b1','match-b2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = opts;
+  });
 }
 
 function renderH2HSelects() {
@@ -1764,28 +1832,59 @@ function renderH2HSelects() {
 
 window.logMatch = async function() {
   if (!db) { showToast('Not connected!', true); return; }
-  const p1 = document.getElementById('match-p1').value;
-  const p2 = document.getElementById('match-p2').value;
-  const s1 = parseInt(document.getElementById('match-s1').value);
-  const s2 = parseInt(document.getElementById('match-s2').value);
   const dateVal = document.getElementById('match-date').value;
-  if (!p1 || !p2) { showToast('Select both players!', true); return; }
-  if (p1 === p2) { showToast('Select two different players!', true); return; }
-  if (isNaN(s1) || isNaN(s2)) { showToast('Enter both scores!', true); return; }
-  if (s1 === s2) { showToast('Scores cannot be equal!', true); return; }
   if (!dateVal) { showToast('Pick a date!', true); return; }
-  const winner = s1 > s2 ? p1 : p2;
-  const loser  = s1 > s2 ? p2 : p1;
-  try {
-    await addDoc(collection(db, 'matches'), {
-      p1, p2, s1, s2, winner, loser,
-      winnerScore: Math.max(s1,s2), loserScore: Math.min(s1,s2),
-      date: dateVal, confirmed: false, loggedBy: p1,
-      createdAt: new Date().toISOString()
-    });
-    ['match-p1','match-p2','match-s1','match-s2'].forEach(id => document.getElementById(id).value = '');
-    showToast('📤 Match submitted! Waiting for confirmation.');
-  } catch(e) { showToast('Error: ' + e.message, true); }
+
+  if (currentMatchType === 'singles') {
+    const p1 = document.getElementById('match-p1').value;
+    const p2 = document.getElementById('match-p2').value;
+    const s1 = parseInt(document.getElementById('match-s1').value);
+    const s2 = parseInt(document.getElementById('match-s2').value);
+    if (!p1 || !p2) { showToast('Select both players!', true); return; }
+    if (p1 === p2) { showToast('Select two different players!', true); return; }
+    if (isNaN(s1) || isNaN(s2)) { showToast('Enter both scores!', true); return; }
+    if (s1 === s2) { showToast('Scores cannot be equal!', true); return; }
+    const winner = s1 > s2 ? p1 : p2;
+    const loser  = s1 > s2 ? p2 : p1;
+    try {
+      await addDoc(collection(db, 'matches'), {
+        type: 'singles', p1, p2, s1, s2, winner, loser,
+        winnerScore: Math.max(s1,s2), loserScore: Math.min(s1,s2),
+        date: dateVal, confirmed: false, loggedBy: p1,
+        createdAt: new Date().toISOString()
+      });
+      ['match-p1','match-p2','match-s1','match-s2'].forEach(id => document.getElementById(id).value = '');
+      showToast('📤 Singles match submitted!');
+    } catch(e) { showToast('Error: ' + e.message, true); }
+
+  } else {
+    const a1 = document.getElementById('match-a1').value;
+    const a2 = document.getElementById('match-a2').value;
+    const b1 = document.getElementById('match-b1').value;
+    const b2 = document.getElementById('match-b2').value;
+    const ds1 = parseInt(document.getElementById('match-ds1').value);
+    const ds2 = parseInt(document.getElementById('match-ds2').value);
+    if (!a1 || !a2 || !b1 || !b2) { showToast('Select all 4 players!', true); return; }
+    const allP = [a1, a2, b1, b2];
+    if (new Set(allP).size !== 4) { showToast('All 4 players must be different!', true); return; }
+    if (isNaN(ds1) || isNaN(ds2)) { showToast('Enter both scores!', true); return; }
+    if (ds1 === ds2) { showToast('Scores cannot be equal!', true); return; }
+    const teamAWon = ds1 > ds2;
+    const winningTeam  = teamAWon ? [a1, a2] : [b1, b2];
+    const losingTeam   = teamAWon ? [b1, b2] : [a1, a2];
+    try {
+      await addDoc(collection(db, 'matches'), {
+        type: 'doubles',
+        teamA: [a1, a2], teamB: [b1, b2],
+        scoreA: ds1, scoreB: ds2,
+        winningTeam, losingTeam,
+        date: dateVal, confirmed: false, loggedBy: a1,
+        createdAt: new Date().toISOString()
+      });
+      ['match-a1','match-a2','match-b1','match-b2','match-ds1','match-ds2'].forEach(id => document.getElementById(id).value = '');
+      showToast('📤 Doubles match submitted!');
+    } catch(e) { showToast('Error: ' + e.message, true); }
+  }
 };
 
 window.confirmMatch = async function(id) {
@@ -1807,91 +1906,130 @@ window.deleteMatch = async function(id) {
 function renderMatchLists() {
   const currentUser = localStorage.getItem('badminton_identity') || '';
   const pending   = matches.filter(m => !m.confirmed);
-  const confirmed = matches.filter(m => m.confirmed).slice(0, 15);
+  const confirmed = matches.filter(m => m.confirmed).slice(0, 20);
+
+  function matchCard(m, showConfirm) {
+    const isDoubles = m.type === 'doubles';
+    if (isDoubles) {
+      const tA = (m.teamA||[]).join(' & ');
+      const tB = (m.teamB||[]).join(' & ');
+      const aWon = m.scoreA > m.scoreB;
+      const inMatch = [...(m.teamA||[]),...(m.teamB||[])].includes(currentUser);
+      const isOpponent = inMatch && !(m.teamA||[]).includes(currentUser) === (m.teamA||[]).includes(m.loggedBy);
+      const canConfirm = showConfirm && inMatch && currentUser !== m.loggedBy;
+      const confirmEl = showConfirm
+        ? canConfirm
+          ? `<button class="confirm-btn" onclick="confirmMatch('${m.id}')">✅ Confirm</button>`
+          : inMatch
+            ? `<span style="font-size:11px;color:var(--muted);">Waiting for opponent</span>`
+            : `<span style="font-size:11px;color:var(--muted);">Awaiting confirmation</span>`
+        : `<div class="match-winner-tag">🏆 Winners: <span>${(m.winningTeam||[]).join(' & ')}</span></div>`;
+      return `
+        <div class="match-card">
+          <div class="match-card-top">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="background:rgba(88,166,255,0.15);border:1px solid rgba(88,166,255,0.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:var(--accent2);">🏸🏸 Doubles</span>
+              <span class="match-date">${fmtDate(m.date)}</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              ${showConfirm ? `<span class="pending-badge">⏳ Pending</span>` : `<span class="confirmed-badge">✅ Confirmed</span>`}
+              <button class="session-delete" onclick="deleteMatch('${m.id}')">🗑</button>
+            </div>
+          </div>
+          <div class="match-scoreline">
+            <div class="match-player">
+              <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:4px;">TEAM A</div>
+              <div style="font-size:12px;font-weight:600;text-align:center;color:var(--text);margin-bottom:6px;line-height:1.4;">${(m.teamA||[]).map(p=>`<div style="color:${colorFor(p)}">${p}</div>`).join('')}</div>
+              <div class="match-player-score ${aWon?'winner':'loser'}">${m.scoreA}</div>
+            </div>
+            <div class="match-vs">VS</div>
+            <div class="match-player">
+              <div style="font-size:11px;font-weight:700;color:var(--accent2);margin-bottom:4px;">TEAM B</div>
+              <div style="font-size:12px;font-weight:600;text-align:center;color:var(--text);margin-bottom:6px;line-height:1.4;">${(m.teamB||[]).map(p=>`<div style="color:${colorFor(p)}">${p}</div>`).join('')}</div>
+              <div class="match-player-score ${!aWon?'winner':'loser'}">${m.scoreB}</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">${confirmEl}</div>
+        </div>`;
+    } else {
+      // singles
+      const inMatch = currentUser === m.p1 || currentUser === m.p2;
+      const canConfirm = showConfirm && inMatch && currentUser !== m.loggedBy;
+      const confirmEl = showConfirm
+        ? canConfirm
+          ? `<button class="confirm-btn" onclick="confirmMatch('${m.id}')">✅ Confirm Result</button>`
+          : inMatch
+            ? `<span style="font-size:11px;color:var(--muted);">Waiting for opponent</span>`
+            : `<span style="font-size:11px;color:var(--muted);">Awaiting confirmation</span>`
+        : `<div class="match-winner-tag">🏆 Winner: <span>${m.winner}</span></div>`;
+      return `
+        <div class="match-card">
+          <div class="match-card-top">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="background:rgba(57,211,83,0.12);border:1px solid rgba(57,211,83,0.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:var(--accent);">🏸 Singles</span>
+              <span class="match-date">${fmtDate(m.date)}</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              ${showConfirm ? `<span class="pending-badge">⏳ Pending</span>` : `<span class="confirmed-badge">✅ Confirmed</span>`}
+              <button class="session-delete" onclick="deleteMatch('${m.id}')">🗑</button>
+            </div>
+          </div>
+          <div class="match-scoreline">
+            <div class="match-player">
+              <div class="match-player-name" style="color:${colorFor(m.p1)}">${m.p1}</div>
+              <div class="match-player-score ${m.winner===m.p1?'winner':'loser'}">${m.s1}</div>
+            </div>
+            <div class="match-vs">VS</div>
+            <div class="match-player">
+              <div class="match-player-name" style="color:${colorFor(m.p2)}">${m.p2}</div>
+              <div class="match-player-score ${m.winner===m.p2?'winner':'loser'}">${m.s2}</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">${confirmEl}</div>
+        </div>`;
+    }
+  }
 
   const pel = document.getElementById('pending-matches');
-  if (!pending.length) {
-    pel.innerHTML = '<div class="no-data" style="padding:16px 0;"><div class="icon" style="font-size:28px;">✅</div>No pending matches</div>';
-  } else {
-    pel.innerHTML = pending.map(m => {
-      const isInMatch = currentUser === m.p1 || currentUser === m.p2;
-      const isOpponent = isInMatch && currentUser !== m.loggedBy;
-      // Confirm button: only visible to the opponent (the one who didn't log it)
-      const confirmBtn = isOpponent
-        ? `<button class="confirm-btn" onclick="confirmMatch('${m.id}')">✅ Confirm Result</button>`
-        : isInMatch
-          ? `<span style="font-size:11px;color:var(--muted);">Waiting for opponent</span>`
-          : `<span style="font-size:11px;color:var(--muted);">Awaiting confirmation</span>`;
-      return `
-      <div class="match-card">
-        <div class="match-card-top">
-          <div class="match-date">${fmtDate(m.date)}</div>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <span class="pending-badge">⏳ Pending</span>
-            <button class="session-delete" onclick="deleteMatch('${m.id}')">🗑</button>
-          </div>
-        </div>
-        <div class="match-scoreline">
-          <div class="match-player">
-            <div class="match-player-name" style="color:${colorFor(m.p1)}">${m.p1}</div>
-            <div class="match-player-score ${m.winner===m.p1?'winner':'loser'}">${m.s1}</div>
-          </div>
-          <div class="match-vs">VS</div>
-          <div class="match-player">
-            <div class="match-player-name" style="color:${colorFor(m.p2)}">${m.p2}</div>
-            <div class="match-player-score ${m.winner===m.p2?'winner':'loser'}">${m.s2}</div>
-          </div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div class="match-winner-tag">Winner: <span>${m.winner}</span></div>
-          ${confirmBtn}
-        </div>
-      </div>`;
-    }).join('');
-  }
+  pel.innerHTML = pending.length
+    ? pending.map(m => matchCard(m, true)).join('')
+    : '<div class="no-data" style="padding:16px 0;"><div class="icon" style="font-size:28px;">✅</div>No pending matches</div>';
 
   const cel = document.getElementById('confirmed-matches');
-  if (!confirmed.length) {
-    cel.innerHTML = '<div class="no-data" style="padding:16px 0;"><div class="icon" style="font-size:28px;">🏸</div>No confirmed matches yet</div>';
-  } else {
-    cel.innerHTML = confirmed.map(m => `
-      <div class="match-card">
-        <div class="match-card-top">
-          <div class="match-date">${fmtDate(m.date)}</div>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <span class="confirmed-badge">✅ Confirmed</span>
-            <button class="session-delete" onclick="deleteMatch('${m.id}')">🗑</button>
-          </div>
-        </div>
-        <div class="match-scoreline">
-          <div class="match-player">
-            <div class="match-player-name" style="color:${colorFor(m.p1)}">${m.p1}</div>
-            <div class="match-player-score ${m.winner===m.p1?'winner':'loser'}">${m.s1}</div>
-          </div>
-          <div class="match-vs">VS</div>
-          <div class="match-player">
-            <div class="match-player-name" style="color:${colorFor(m.p2)}">${m.p2}</div>
-            <div class="match-player-score ${m.winner===m.p2?'winner':'loser'}">${m.s2}</div>
-          </div>
-        </div>
-        <div class="match-winner-tag">🏆 Winner: <span>${m.winner}</span></div>
-      </div>`).join('');
-  }
+  cel.innerHTML = confirmed.length
+    ? confirmed.map(m => matchCard(m, false)).join('')
+    : '<div class="no-data" style="padding:16px 0;"><div class="icon" style="font-size:28px;">🏸</div>No confirmed matches yet</div>';
 }
 
 function renderLeaderboard() {
   const confirmed = matches.filter(m => m.confirmed);
   const stats = {};
-  for (const p of players) stats[p] = { w:0, l:0 };
+  for (const p of players) stats[p] = { w:0, l:0, sw:0, sl:0, dw:0, dl:0 };
+
   for (const m of confirmed) {
-    if (!stats[m.winner]) stats[m.winner] = { w:0, l:0 };
-    if (!stats[m.loser])  stats[m.loser]  = { w:0, l:0 };
-    stats[m.winner].w++;
-    stats[m.loser].l++;
+    if (m.type === 'doubles') {
+      // each player in winning team gets a win, losing team gets a loss
+      for (const p of (m.winningTeam||[])) {
+        if (!stats[p]) stats[p] = { w:0, l:0, sw:0, sl:0, dw:0, dl:0 };
+        stats[p].w++; stats[p].dw++;
+      }
+      for (const p of (m.losingTeam||[])) {
+        if (!stats[p]) stats[p] = { w:0, l:0, sw:0, sl:0, dw:0, dl:0 };
+        stats[p].l++; stats[p].dl++;
+      }
+    } else {
+      // singles
+      if (!stats[m.winner]) stats[m.winner] = { w:0, l:0, sw:0, sl:0, dw:0, dl:0 };
+      if (!stats[m.loser])  stats[m.loser]  = { w:0, l:0, sw:0, sl:0, dw:0, dl:0 };
+      stats[m.winner].w++; stats[m.winner].sw++;
+      stats[m.loser].l++;  stats[m.loser].sl++;
+    }
   }
+
   const entries = Object.entries(stats)
-    .map(([name, s]) => ({ name, w:s.w, l:s.l, total:s.w+s.l, pct: s.w+s.l===0 ? 0 : Math.round((s.w/(s.w+s.l))*100) }))
+    .map(([name, s]) => ({ name, ...s, total:s.w+s.l, pct: s.w+s.l===0 ? 0 : Math.round((s.w/(s.w+s.l))*100) }))
     .sort((a,b) => b.pct - a.pct || b.total - a.total || b.w - a.w);
+
   const el = document.getElementById('lb-list');
   if (!entries.length) { el.innerHTML = '<div class="no-data" style="padding:20px;"><div class="icon">🏆</div>No matches yet</div>'; return; }
   const syms = ['🥇','🥈','🥉'];
@@ -1902,7 +2040,10 @@ function renderLeaderboard() {
       <div class="lb-avatar" style="background:${colorFor(e.name)}22;color:${colorFor(e.name)}">${initials(e.name)}</div>
       <div class="lb-info">
         <div class="lb-name">${e.name}</div>
-        <div class="lb-record">${e.w}W — ${e.l}L &nbsp;·&nbsp; ${e.total} match${e.total!==1?'es':''}</div>
+        <div class="lb-record">${e.w}W — ${e.l}L &nbsp;·&nbsp; ${e.total} match${e.total!==1?'es':''}
+          ${e.sw+e.sl>0 ? `<span style="color:var(--accent);"> (${e.sw}W singles)</span>` : ''}
+          ${e.dw+e.dl>0 ? `<span style="color:var(--accent2);"> (${e.dw}W doubles)</span>` : ''}
+        </div>
         <div class="lb-bar-wrap"><div class="lb-bar" style="width:${e.pct}%;background:${colorFor(e.name)}"></div></div>
       </div>
       <div class="lb-winpct" style="color:${colorFor(e.name)}">${e.pct}%</div>
