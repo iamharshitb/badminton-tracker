@@ -1227,7 +1227,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getFirestore, collection, addDoc, getDocs, deleteDoc,
-  doc, setDoc, getDoc, onSnapshot, query, orderBy
+  doc, setDoc, getDoc, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ── GLOBALS ──────────────────────────────────────────────
@@ -1266,16 +1266,17 @@ async function connectFirebase(cfg){
     db=getFirestore(firebaseApp);
     await getDocs(collection(db,'sessions'));
     setFbStatus(true);
-    subscribeToSessions();
-    subscribeToRate();
-    await syncPlayersFromFirebase();
-    try { subscribeToMatches(); } catch(e){ console.warn('matches sub:',e); }
-    return true;
   } catch(e){
-    console.error(e);
+    console.error('Firebase connection failed:',e);
     setFbStatus(false);
     return false;
   }
+  // Each subscription in its own try/catch — one failure won't affect others
+  try { subscribeToSessions(); } catch(e){ console.warn('sessions sub:',e); }
+  try { subscribeToRate(); } catch(e){ console.warn('rate sub:',e); }
+  try { await syncPlayersFromFirebase(); } catch(e){ console.warn('players sync:',e); }
+  try { subscribeToMatches(); } catch(e){ console.warn('matches sub:',e); }
+  return true;
 }
 
 function setFbStatus(ok){
@@ -1291,9 +1292,9 @@ function setFbStatus(ok){
 function subscribeToSessions(){
   if(!db) return;
   if(unsubscribeSessions) unsubscribeSessions();
-  const q=query(collection(db,'sessions'),orderBy('date','desc'));
-  unsubscribeSessions=onSnapshot(q,snap=>{
-    sessions=snap.docs.map(d=>({id:d.id,...d.data()}));
+  unsubscribeSessions=onSnapshot(collection(db,'sessions'),snap=>{
+    sessions=snap.docs.map(d=>({id:d.id,...d.data()}))
+      .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     renderSessionsList();
     renderSummary();
   });
