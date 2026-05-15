@@ -1818,6 +1818,16 @@ function renderMatchLists(){
 }
 
 // ── LEADERBOARD ───────────────────────────────────────────
+// Wilson Score — rewards consistency over small sample sizes
+// z=1.96 = 95% confidence interval
+function wilsonScore(w, total) {
+  if (total === 0) return 0;
+  const z = 1.96;
+  const p = w / total;
+  const score = (p + (z*z)/(2*total) - z*Math.sqrt((p*(1-p) + (z*z)/(4*total))/total)) / (1 + (z*z)/total);
+  return Math.round(score * 100);
+}
+
 function renderLeaderboard(){
   const confirmed=matches.filter(m=>m.confirmed);
   const stats={};
@@ -1834,8 +1844,13 @@ function renderLeaderboard(){
     }
   }
   const entries=Object.entries(stats)
-    .map(([name,s])=>({name,...s,total:s.w+s.l,pct:s.w+s.l===0?0:Math.round((s.w/(s.w+s.l))*100)}))
-    .sort((a,b)=>b.pct-a.pct||b.total-a.total||b.w-a.w);
+    .map(([name,s])=>({
+      name,...s,
+      total:s.w+s.l,
+      pct: s.w+s.l===0 ? 0 : Math.round((s.w/(s.w+s.l))*100),
+      score: wilsonScore(s.w, s.w+s.l)
+    }))
+    .sort((a,b)=>b.score-a.score||b.total-a.total||b.w-a.w);
   const el=document.getElementById('lb-list');
   if(!el) return;
   if(!entries.length){el.innerHTML='<div class="no-data" style="padding:20px;"><div class="icon">🏆</div>No matches yet</div>';return;}
@@ -1846,10 +1861,18 @@ function renderLeaderboard(){
       <div class="lb-avatar" style="background:${colorFor(e.name)}22;color:${colorFor(e.name)}">${initials(e.name)}</div>
       <div class="lb-info">
         <div class="lb-name">${e.name}</div>
-        <div class="lb-record">${e.w}W — ${e.l}L · ${e.total} match${e.total!==1?'es':''}${e.sw+e.sl>0?` <span style="color:#39d353">(${e.sw}W S)</span>`:''}${e.dw+e.dl>0?` <span style="color:#58a6ff">(${e.dw}W D)</span>`:''}</div>
+        <div class="lb-record">
+          ${e.w}W — ${e.l}L · ${e.total} match${e.total!==1?'es':''}
+          · <span style="color:var(--gold)">${e.pct}% win rate</span>
+          ${e.sw+e.sl>0?` <span style="color:#39d353">(${e.sw}W S)</span>`:''}
+          ${e.dw+e.dl>0?` <span style="color:#58a6ff">(${e.dw}W D)</span>`:''}
+        </div>
         <div class="lb-bar-wrap"><div class="lb-bar" style="width:${e.pct}%;background:${colorFor(e.name)}"></div></div>
       </div>
-      <div class="lb-winpct" style="color:${colorFor(e.name)}">${e.pct}%</div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div class="lb-winpct" style="color:${colorFor(e.name)}">${e.score}%</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">confidence</div>
+      </div>
     </div>`).join('');
 }
 
