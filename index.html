@@ -57,25 +57,46 @@
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
+  .tabs::-webkit-scrollbar { display: none; }
   .tab {
     flex: 1;
-    min-width: 80px;
-    padding: 12px 8px;
+    min-width: 64px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px 6px 9px;
     text-align: center;
-    font-family: 'Syne', sans-serif;
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--muted);
     cursor: pointer;
     border-bottom: 2px solid transparent;
     transition: all 0.2s;
     white-space: nowrap;
   }
+  .tab .tab-emoji {
+    font-size: 18px;
+    line-height: 1;
+    filter: grayscale(60%) opacity(0.7);
+    transition: filter 0.2s, transform 0.2s;
+  }
+  .tab .tab-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--muted);
+    transition: color 0.2s;
+  }
+  .tab.active .tab-emoji {
+    filter: none;
+    transform: scale(1.12);
+  }
+  .tab.active .tab-text { color: var(--accent); }
   .tab.active {
-    color: var(--accent);
     border-bottom-color: var(--accent);
   }
 
@@ -914,6 +935,720 @@
     font-weight: 800;
     color: var(--gold);
   }
+
+  /* ── TOURNAMENT ── */
+  .tourney-sub-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .tourney-sub-tab {
+    flex: 1;
+    padding: 8px;
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tourney-sub-tab.active {
+    background: rgba(227,179,65,0.15);
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  .mode-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .mode-toggle button {
+    flex: 1;
+    padding: 9px;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  .mode-toggle button.active {
+    border-color: var(--gold);
+    background: rgba(227,179,65,0.12);
+    color: var(--gold);
+  }
+  .team-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .team-row-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .team-name-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    outline: none;
+    margin-bottom: 8px;
+  }
+  .team-name-input:focus { border-color: var(--gold); }
+  .team-player-row {
+    display: flex;
+    gap: 8px;
+  }
+  .team-player-row select {
+    flex: 1;
+  }
+  .tourney-select-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .tourney-select-card select {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    outline: none;
+    appearance: auto;
+    -webkit-appearance: auto;
+  }
+  .fixture-round-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin: 14px 0 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .fixture-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .fixture-teams {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .fixture-team {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+  .fixture-team.winner { color: var(--accent); }
+  .fixture-vs {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--muted);
+  }
+  .fixture-score-display {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 900;
+    color: var(--gold);
+    text-align: center;
+  }
+  .fixture-score-inputs {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .fixture-status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .points-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .points-table th {
+    background: var(--surface);
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 10px 8px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .points-table th:first-child { text-align: left; }
+  .points-table td {
+    padding: 10px 8px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+  }
+  .points-table td:first-child {
+    text-align: left;
+    font-weight: 700;
+  }
+  .points-table tr:last-child td { border-bottom: none; }
+  .points-table .pts-cell {
+    color: var(--gold);
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+  }
+  .points-table tr.rank1 td:first-child { color: #FFD700; }
+  .points-table tr.rank2 td:first-child { color: #C0C0C0; }
+  .points-table tr.rank3 td:first-child { color: #CD7F32; }
+  .tourney-delete-btn {
+    background: var(--warn-dim);
+    color: var(--warn);
+    border: 1px solid var(--warn);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 12px;
+  }
+
+  /* ── PLAYOFF SECTION & BRACKET ── */
+  .playoff-section-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 20px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--gold);
+    text-align: center;
+  }
+
+  /* Small colored player dot used throughout */
+  .pdot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+    flex-shrink: 0;
+  }
+
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes championGlow {
+    0%, 100% { box-shadow: 0 0 16px rgba(255,214,10,0.25), inset 0 0 20px rgba(255,214,10,0.04); }
+    50%      { box-shadow: 0 0 36px rgba(255,214,10,0.55), inset 0 0 30px rgba(255,214,10,0.08); }
+  }
+  @keyframes trophyBounce {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25%      { transform: translateY(-5px) rotate(-10deg); }
+    75%      { transform: translateY(-5px) rotate(10deg); }
+  }
+  @keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* ── Bracket layout ── */
+  .bracket-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 4px 18px;
+    animation: fadeSlideIn 0.4s ease;
+  }
+  .bracket-h {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    min-width: max-content;
+    margin: 0 auto;
+  }
+  .bracket-col-sf {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 28px;
+    height: 196px;
+  }
+  .bracket-col-final {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 196px;
+  }
+  .bracket-connector {
+    width: 34px;
+    height: 196px;
+    flex-shrink: 0;
+  }
+  .bracket-round-pill {
+    display: block;
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--accent2);
+    background: rgba(88,166,255,0.10);
+    border: 1px solid rgba(88,166,255,0.25);
+    border-radius: 20px;
+    padding: 4px 0;
+    margin-bottom: 8px;
+    text-align: center;
+    width: 168px;
+  }
+  .bracket-round-pill.gold {
+    color: var(--gold);
+    background: rgba(255,214,10,0.10);
+    border-color: rgba(255,214,10,0.3);
+  }
+
+  /* Match card */
+  .bmatch-card {
+    width: 168px;
+    min-height: 80px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    transition: all 0.25s;
+    position: relative;
+  }
+  .bmatch-card.tbd {
+    opacity: 0.45;
+    border-style: dashed;
+  }
+  .bmatch-card.decided {
+    border-color: rgba(57,211,83,0.35);
+    box-shadow: 0 2px 12px rgba(57,211,83,0.08);
+  }
+  .bmatch-card.pending-card {
+    border-color: rgba(255,214,10,0.35);
+  }
+  .bmatch-date {
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .bmatch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0;
+    gap: 8px;
+  }
+  .bmatch-row .bname {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+  }
+  .bmatch-row .bname-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bmatch-row.winner .bname { color: var(--accent); font-weight: 800; text-shadow: 0 0 10px rgba(57,211,83,0.35); }
+  .bmatch-row .bsub {
+    display: block;
+    font-size: 9px;
+    font-weight: 500;
+    color: var(--muted);
+    margin-left: 14px;
+  }
+  .bmatch-row .bscore {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    color: var(--text2);
+    background: var(--surface);
+    border-radius: 6px;
+    padding: 2px 9px;
+    min-width: 28px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .bmatch-row.winner .bscore { color: var(--gold); background: rgba(255,214,10,0.15); }
+  .bmatch-row .bscore.tbd-score { background: transparent; color: var(--border2); }
+  .bmatch-pending-tag {
+    margin-top: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+  }
+
+  /* Champion section */
+  .champion-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 4px;
+  }
+  .champion-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4px 0;
+  }
+  .champion-connector .line {
+    width: 2px;
+    height: 16px;
+    background: var(--border2);
+  }
+  .champion-connector .arrow {
+    font-size: 14px;
+    color: var(--accent2);
+    line-height: 1;
+  }
+  .bracket-box.champion {
+    width: 100%;
+    max-width: 320px;
+    border: 2px solid var(--gold);
+    border-radius: 14px;
+    padding: 18px;
+    background: linear-gradient(135deg, rgba(255,214,10,0.14), rgba(255,214,10,0.02));
+    text-align: center;
+    animation: championGlow 2.6s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
+  }
+  .bracket-box.champion::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.12) 50%, transparent 70%);
+    background-size: 200% 100%;
+    animation: shimmer 3s ease-in-out infinite;
+  }
+  .bracket-box.champion.tbd {
+    border: 2px dashed var(--border);
+    background: none;
+    animation: none;
+    opacity: 0.6;
+  }
+  .bracket-box.champion.tbd::before { display: none; }
+  .champion-trophy {
+    font-size: 34px;
+    margin-bottom: 4px;
+    display: inline-block;
+    animation: trophyBounce 1.8s ease-in-out infinite;
+    position: relative;
+    z-index: 1;
+  }
+  .champion-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 19px;
+    font-weight: 900;
+    color: var(--gold);
+    position: relative;
+    z-index: 1;
+  }
+  .champion-players {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+    position: relative;
+    z-index: 1;
+  }
+  .champion-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 4px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── FIXTURE SHEET (infographic style) ── */
+  .sheet-banner {
+    background: linear-gradient(135deg, #0d1b3d, #16224a);
+    border: 1px solid var(--border2);
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .sheet-banner-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 900;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .sheet-banner-sub {
+    font-size: 12px;
+    color: var(--text2);
+    font-weight: 600;
+  }
+  .sheet-banner-sub span { color: var(--accent); font-weight: 800; }
+
+  .sheet-section-header {
+    background: var(--accent2);
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    text-align: center;
+    padding: 9px;
+    border-radius: 10px 10px 0 0;
+    margin-top: 18px;
+  }
+  .sheet-section-header.knockout { background: #5b3aa0; }
+  .sheet-section-body {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    padding: 14px;
+  }
+  .sheet-section-note {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  .sheet-table { width: 100%; border-collapse: collapse; }
+  .sheet-table th {
+    background: var(--surface);
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    padding: 8px 4px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .sheet-table td {
+    padding: 8px 4px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .sheet-table tr:last-child td { border-bottom: none; }
+  .sheet-match-num {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    color: var(--accent2);
+    font-size: 13px;
+  }
+  .sheet-team-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 6px;
+    color: #fff;
+    white-space: nowrap;
+  }
+  .sheet-vs-text { color: var(--muted); font-size: 10px; font-weight: 700; padding: 0 4px; }
+  .sheet-fixture-cell { display: flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: nowrap; }
+  .sheet-score-cell {
+    font-family: 'JetBrains Mono', 'Syne', sans-serif;
+    font-weight: 800;
+    color: var(--gold);
+  }
+  .sheet-status-cell { font-size: 10px; font-weight: 700; }
+  .sheet-status-cell.done { color: var(--accent); }
+  .sheet-status-cell.pending { color: var(--gold); }
+  .sheet-status-cell.upcoming { color: var(--muted); }
+
+  .sheet-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 14px;
+  }
+  .sheet-info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .sheet-info-header {
+    background: var(--card2);
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text2);
+    padding: 7px;
+    text-align: center;
+  }
+  .sheet-info-body { padding: 10px 12px; }
+  .sheet-info-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    padding: 4px 0;
+    color: var(--text2);
+  }
+  .sheet-info-row .num-badge {
+    background: var(--accent2);
+    color: #fff;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800;
+    flex-shrink: 0;
+  }
+  .sheet-team-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 0;
+  }
+  .sheet-team-legend-row .sw {
+    width: 18px; height: 18px;
+    border-radius: 5px;
+    flex-shrink: 0;
+  }
+
+  /* Knockout stage cards in sheet view */
+  .sheet-knockout-flow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+  .sheet-ko-card {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 10px;
+    min-width: 150px;
+    flex-shrink: 0;
+  }
+  .sheet-ko-card-header {
+    background: #5b3aa0;
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 800;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: 6px;
+    padding: 4px;
+    margin: -10px -10px 8px;
+  }
+  .sheet-ko-card-header.final-header { background: var(--gold); color: #1a1300; }
+  .sheet-ko-match-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .sheet-ko-vs-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .sheet-ko-slot {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sheet-ko-arrow {
+    font-size: 18px;
+    color: var(--accent2);
+    flex-shrink: 0;
+  }
+  .sheet-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 14px;
+  }
+  .sheet-summary-table td {
+    padding: 8px 10px;
+    font-size: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sheet-summary-table td:last-child { text-align: right; font-weight: 800; font-family: 'Syne', sans-serif; }
+  .sheet-summary-table tr.total td { color: var(--gold); font-size: 14px; }
 </style>
 <!-- Google Analytics - Replace GA_MEASUREMENT_ID with your actual ID -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
@@ -941,6 +1676,23 @@
   </div>
 </div>
 
+<!-- ADMIN PASSWORD MODAL (for delete actions) -->
+<div id="admin-pass-overlay" style="display:none; position:fixed; inset:0; background:rgba(13,17,23,0.92); z-index:600; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:#161b22; border:1px solid #30363d; border-radius:14px; padding:24px 20px; max-width:340px; width:100%;">
+    <div style="text-align:center; margin-bottom:16px;">
+      <div style="font-size:36px; margin-bottom:8px;">🔒</div>
+      <div id="admin-pass-title" style="font-family:'Syne',sans-serif; font-size:17px; font-weight:800; color:#e6edf3; margin-bottom:6px;">Admin Password Required</div>
+      <div id="admin-pass-sub" style="font-size:12px; color:#8b949e; line-height:1.5;">Enter the shared admin password to confirm this delete.</div>
+    </div>
+    <input type="password" id="admin-pass-input" placeholder="Password" style="width:100%; background:#0d1117; border:1px solid #30363d; border-radius:8px; padding:10px 12px; color:#e6edf3; font-family:'DM Sans',sans-serif; font-size:14px; outline:none; margin-bottom:12px;" onkeydown="if(event.key==='Enter') window._submitAdminPass()"/>
+    <div style="display:flex; gap:8px;">
+      <button onclick="window._cancelAdminPass()" style="flex:1; background:#0d1117; border:1px solid #30363d; color:#e6edf3; border-radius:8px; padding:10px; font-family:'Syne',sans-serif; font-size:13px; font-weight:700; cursor:pointer;">Cancel</button>
+      <button onclick="window._submitAdminPass()" style="flex:1; background:#ff4757; border:none; color:#fff; border-radius:8px; padding:10px; font-family:'Syne',sans-serif; font-size:13px; font-weight:700; cursor:pointer;">🗑 Confirm Delete</button>
+    </div>
+    <p id="admin-pass-error" style="font-size:11px; color:#ff4757; text-align:center; margin-top:10px; display:none;">❌ Incorrect password. Try again.</p>
+  </div>
+</div>
+
 <header>
   <div style="display:flex; justify-content:space-between; align-items:center;">
     <div>
@@ -957,10 +1709,11 @@
 </header>
 
 <div class="tabs">
-  <div class="tab active" onclick="switchTab('record')">📅 Record</div>
-  <div class="tab" onclick="switchTab('sessions')">📋 Sessions</div>
-  <div class="tab" onclick="switchTab('summary')">💰 Summary</div>
-  <div class="tab" onclick="switchTab('rivalry')">⚔️ 1v1</div>
+  <div class="tab active" onclick="switchTab('record')"><span class="tab-emoji">📅</span><span class="tab-text">Record</span></div>
+  <div class="tab" onclick="switchTab('sessions')"><span class="tab-emoji">📋</span><span class="tab-text">Sessions</span></div>
+  <div class="tab" onclick="switchTab('summary')"><span class="tab-emoji">💰</span><span class="tab-text">Summary</span></div>
+  <div class="tab" onclick="switchTab('rivalry')"><span class="tab-emoji">⚔️</span><span class="tab-text">1v1</span></div>
+  <div class="tab" onclick="switchTab('tourney')"><span class="tab-emoji">🏆</span><span class="tab-text">Tourney</span></div>
 </div>
 
 <!-- ===== SETUP PAGE ===== -->
@@ -1219,6 +1972,92 @@
 
 </div>
 
+<!-- ===== TOURNAMENT PAGE ===== -->
+<div class="page" id="page-tourney">
+
+  <!-- Sub tabs -->
+  <div class="tourney-sub-tabs">
+    <div class="tourney-sub-tab active" id="ttab-create" onclick="switchTourneyTab('create')">➕ Create</div>
+    <div class="tourney-sub-tab" id="ttab-fixtures" onclick="switchTourneyTab('fixtures')">📋 Fixtures</div>
+    <div class="tourney-sub-tab" id="ttab-points" onclick="switchTourneyTab('points')">🏆 Points Table</div>
+  </div>
+
+  <!-- CREATE TOURNAMENT -->
+  <div id="tourney-create">
+    <div class="match-form">
+      <h3>🏆 New Tournament</h3>
+
+      <div class="field" style="margin-bottom:12px;">
+        <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:6px;">Tournament Name</label>
+        <input type="text" id="tourney-name" placeholder="e.g. Summer Smash 2026" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:14px; outline:none;"/>
+      </div>
+
+      <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:6px;">Format</label>
+      <div class="mode-toggle">
+        <button id="tourney-mode-singles" class="active" onclick="setTourneyMode('singles')">🏸 Singles</button>
+        <button id="tourney-mode-doubles" onclick="setTourneyMode('doubles')">🏸🏸 Doubles</button>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
+        <div>
+          <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:6px;">Number of Teams</label>
+          <input type="number" id="tourney-num-teams" min="2" max="16" value="4" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-family:'Syne',sans-serif; font-size:16px; font-weight:800; outline:none; text-align:center;" onchange="renderTeamInputs()"/>
+        </div>
+        <div>
+          <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:6px;">Total Games (incl. SF + Final)</label>
+          <input type="number" id="tourney-total-games" min="4" value="9" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-family:'Syne',sans-serif; font-size:16px; font-weight:800; outline:none; text-align:center;"/>
+        </div>
+      </div>
+      <p id="tourney-games-hint" style="font-size:11px; color:var(--muted); margin-top:-8px; margin-bottom:14px;"></p>
+
+      <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:8px;">Teams</label>
+      <div id="team-inputs"></div>
+
+      <button class="btn btn-primary btn-full" onclick="createTournament()" style="margin-top:6px;">🚀 Generate Fixtures & Create</button>
+    </div>
+  </div>
+
+  <!-- FIXTURES -->
+  <div id="tourney-fixtures" style="display:none;">
+    <div class="tourney-select-card">
+      <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:8px;">Select Tournament</label>
+      <select id="tourney-select-fixtures" onchange="onTourneySelect()">
+        <option value="">No tournaments yet</option>
+      </select>
+    </div>
+
+    <div class="mode-toggle" style="margin-bottom:14px;">
+      <button id="fview-sheet" class="active" onclick="switchFixtureView('sheet')">🗂️ Sheet</button>
+      <button id="fview-list" onclick="switchFixtureView('list')">📋 List</button>
+      <button id="fview-bracket" onclick="switchFixtureView('bracket')">🌳 Bracket</button>
+    </div>
+
+    <div id="fixtures-sheet-view">
+      <div id="sheet-container"></div>
+    </div>
+    <div id="fixtures-list-view" style="display:none;">
+      <div id="fixtures-list"></div>
+    </div>
+    <div id="fixtures-bracket-view" style="display:none;">
+      <div id="bracket-container"></div>
+    </div>
+
+    <button class="tourney-delete-btn" id="delete-tourney-btn" onclick="deleteTournament()" style="display:none;">🗑 Delete This Tournament</button>
+  </div>
+
+  <!-- POINTS TABLE -->
+  <div id="tourney-points" style="display:none;">
+    <div class="tourney-select-card">
+      <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:8px;">Select Tournament</label>
+      <select id="tourney-select-points" onchange="onTourneySelectPoints()">
+        <option value="">No tournaments yet</option>
+      </select>
+    </div>
+    <div id="points-table-container"></div>
+  </div>
+
+</div>
+
 <div id="toast">Saved!</div>
 
 
@@ -1238,6 +2077,8 @@ let selectedPlayers = new Set();
 let summaryMonthOffset = 0;
 let unsubscribeSessions = null, unsubscribeRate = null, unsubscribeMatches = null;
 let currentMatchType = 'singles';
+let adminPassHash = null;       // set once via Firebase config/adminPass
+let pendingDeleteAction = null; // function to run after password confirms
 
 const COLORS = ["#39d353","#58a6ff","#f78166","#e3b341","#bc8cff","#79c0ff","#ffa657","#7ee787","#ff7b72","#d2a8ff"];
 function colorFor(n){let h=0;for(let c of n)h=(h*31+c.charCodeAt(0))&0xFFFFFF;return COLORS[Math.abs(h)%COLORS.length];}
@@ -1254,6 +2095,82 @@ function showToast(msg, isError=false){
   clearTimeout(t._t);
   t._t=setTimeout(()=>t.classList.remove('show'),2500);
 }
+
+// ── ADMIN PASSWORD SYSTEM ──────────────────────────────────
+// One shared password for the whole group, stored in Firebase config/adminPass.
+// Required to confirm ANY delete action (sessions, 1v1 matches, tournaments).
+let unsubscribeAdminPass = null;
+
+function subscribeToAdminPass(){
+  if(!db) return;
+  if(unsubscribeAdminPass) unsubscribeAdminPass();
+  unsubscribeAdminPass=onSnapshot(doc(db,'config','adminPass'),snap=>{
+    adminPassHash = snap.exists() ? snap.data().hash : null;
+  });
+}
+
+// Simple obfuscation consistent with rest of app's style (not cryptographic security,
+// just prevents the password sitting in plaintext in the database).
+function hashPass(pw){ return btoa(unescape(encodeURIComponent(pw))); }
+
+// Opens the password modal and stores the action to run if password is correct.
+// If no admin password has ever been set, the FIRST person to delete anything
+// gets prompted to create one (acts as the group's shared password going forward).
+window.requireAdminPass=function(action, opts){
+  opts = opts || {};
+  pendingDeleteAction = action;
+  const overlay=document.getElementById('admin-pass-overlay');
+  const title=document.getElementById('admin-pass-title');
+  const sub=document.getElementById('admin-pass-sub');
+  const input=document.getElementById('admin-pass-input');
+  const err=document.getElementById('admin-pass-error');
+  err.style.display='none';
+  input.value='';
+
+  if(!adminPassHash){
+    title.textContent='🔐 Set Admin Password';
+    sub.textContent='No admin password exists yet for this group. Set one now — it will be required for all future deletes.';
+  } else {
+    title.textContent='Admin Password Required';
+    sub.textContent=opts.message || 'Enter the shared admin password to confirm this delete.';
+  }
+  overlay.style.display='flex';
+  setTimeout(()=>input.focus(), 100);
+};
+
+window._cancelAdminPass=function(){
+  document.getElementById('admin-pass-overlay').style.display='none';
+  pendingDeleteAction=null;
+};
+
+window._submitAdminPass=async function(){
+  const input=document.getElementById('admin-pass-input');
+  const err=document.getElementById('admin-pass-error');
+  const pw=input.value;
+  if(!pw){ err.textContent='❌ Please enter a password.'; err.style.display='block'; return; }
+
+  if(!adminPassHash){
+    // first time setup — this becomes the shared password
+    try {
+      const h=hashPass(pw);
+      await setDoc(doc(db,'config','adminPass'),{hash:h});
+      adminPassHash=h;
+      document.getElementById('admin-pass-overlay').style.display='none';
+      showToast('🔐 Admin password set! Use it for future deletes.');
+      if(pendingDeleteAction){ await pendingDeleteAction(); pendingDeleteAction=null; }
+    } catch(e){ showToast('Error setting password: '+e.message, true); }
+    return;
+  }
+
+  if(hashPass(pw)!==adminPassHash){
+    err.textContent='❌ Incorrect password. Try again.';
+    err.style.display='block';
+    return;
+  }
+
+  document.getElementById('admin-pass-overlay').style.display='none';
+  if(pendingDeleteAction){ await pendingDeleteAction(); pendingDeleteAction=null; }
+};
 
 // ── LOCAL STORAGE ────────────────────────────────────────
 function loadLocalPlayers(){players=JSON.parse(localStorage.getItem('players')||'[]');}
@@ -1276,6 +2193,8 @@ async function connectFirebase(cfg){
   try { subscribeToRate(); } catch(e){ console.warn('rate sub:',e); }
   try { await syncPlayersFromFirebase(); } catch(e){ console.warn('players sync:',e); }
   try { subscribeToMatches(); } catch(e){ console.warn('matches sub:',e); }
+  try { subscribeToTournaments(); } catch(e){ console.warn('tournaments sub:',e); }
+  try { subscribeToAdminPass(); } catch(e){ console.warn('admin pass sub:',e); }
   return true;
 }
 
@@ -1530,20 +2449,23 @@ window.clearAllSessions=async function(){
   if(!db){showToast('Not connected!',true);return;}
   if(sessions.length===0){showToast('No sessions to clear!',true);return;}
   if(!confirm(`⚠️ Delete all ${sessions.length} session(s)?\n\nPlayer names and rate will be kept.`)) return;
-  try {
-    const snap=await getDocs(collection(db,'sessions'));
-    await Promise.all(snap.docs.map(d=>deleteDoc(doc(db,'sessions',d.id))));
-    showToast('✅ All sessions cleared!');
-  } catch(e){showToast('Error: '+e.message,true);}
+  requireAdminPass(async ()=>{
+    try {
+      const snap=await getDocs(collection(db,'sessions'));
+      await Promise.all(snap.docs.map(d=>deleteDoc(doc(db,'sessions',d.id))));
+      showToast('✅ All sessions cleared!');
+    } catch(e){showToast('Error: '+e.message,true);}
+  }, {message:'Enter the admin password to clear ALL sessions.'});
 };
 
 window.deleteSession=async function(id){
   if(!db) return;
-  if(!confirm('Delete this session?')) return;
-  try {
-    await deleteDoc(doc(db,'sessions',id));
-    showToast('Session deleted');
-  } catch(e){showToast('Error: '+e.message,true);}
+  requireAdminPass(async ()=>{
+    try {
+      await deleteDoc(doc(db,'sessions',id));
+      showToast('Session deleted');
+    } catch(e){showToast('Error: '+e.message,true);}
+  }, {message:'Enter the admin password to delete this session.'});
 };
 
 function renderSessionsList(){
@@ -1607,6 +2529,7 @@ window.switchTab=function(tab){
   document.getElementById('page-'+tab).classList.add('active');
   if(tab==='summary') renderSummary();
   if(tab==='rivalry'){ populateMatchSelects(); renderMatchLists(); renderLeaderboard(); renderH2HSelects(); }
+  if(tab==='tourney'){ renderTeamInputs(); refreshTourneySelects(); }
 };
 
 // ── IDENTITY ──────────────────────────────────────────────
@@ -1737,9 +2660,10 @@ window.confirmMatch=async function(id){
 };
 
 window.deleteMatch=async function(id){
-  if(!confirm('Delete this match?')) return;
-  try { await deleteDoc(doc(db,'matches',id)); showToast('Match deleted'); }
-  catch(e){showToast('Error: '+e.message,true);}
+  requireAdminPass(async ()=>{
+    try { await deleteDoc(doc(db,'matches',id)); showToast('Match deleted'); }
+    catch(e){showToast('Error: '+e.message,true);}
+  }, {message:'Enter the admin password to delete this 1v1 match.'});
 };
 
 // ── RENDER MATCHES ────────────────────────────────────────
@@ -1914,7 +2838,843 @@ window.renderH2H=function(){
   `;
 };
 
-// ── INIT ──────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+// ── TOURNAMENT ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+let tournaments = [];
+let unsubscribeTournaments = null;
+let tourneyMode = 'singles';
+let selectedTourneyId = null;
+
+function subscribeToTournaments(){
+  if(!db) return;
+  if(unsubscribeTournaments) unsubscribeTournaments();
+  unsubscribeTournaments=onSnapshot(collection(db,'tournaments'),snap=>{
+    tournaments=snap.docs.map(d=>({id:d.id,...d.data()}))
+      .sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+    refreshTourneySelects();
+    if(selectedTourneyId) {
+      renderFixtures();
+      renderPointsTable();
+      renderFixtureSheet();
+    }
+  });
+}
+
+window.switchTourneyTab=function(tab){
+  ['create','fixtures','points'].forEach(t=>{
+    document.getElementById('tourney-'+t).style.display = t===tab ? 'block':'none';
+    document.getElementById('ttab-'+t).classList.toggle('active', t===tab);
+  });
+  if(tab==='fixtures' || tab==='points') refreshTourneySelects();
+};
+
+// ── MODE TOGGLE ───────────────────────────────────────────
+window.setTourneyMode=function(mode){
+  tourneyMode=mode;
+  const sBtn=document.getElementById('tourney-mode-singles');
+  const dBtn=document.getElementById('tourney-mode-doubles');
+  sBtn.classList.toggle('active', mode==='singles');
+  dBtn.classList.toggle('active', mode==='doubles');
+  renderTeamInputs();
+};
+
+// ── TEAM INPUT BUILDER ────────────────────────────────────
+window.renderTeamInputs=function(){
+  const numTeams=parseInt(document.getElementById('tourney-num-teams').value)||2;
+  const el=document.getElementById('team-inputs');
+  const opts='<option value="">Select player...</option>'+players.map(p=>`<option value="${p}">${p}</option>`).join('');
+
+  let html='';
+  for(let i=0;i<numTeams;i++){
+    if(tourneyMode==='singles'){
+      html+=`
+        <div class="team-row">
+          <div class="team-row-label">Team ${i+1}</div>
+          <select class="player-select" id="team-${i}-p1" style="appearance:auto;-webkit-appearance:auto;width:100%;">${opts}</select>
+        </div>`;
+    } else {
+      html+=`
+        <div class="team-row">
+          <div class="team-row-label">Team ${i+1}</div>
+          <input type="text" class="team-name-input" id="team-${i}-name" placeholder="Team name (e.g. Smashers)"/>
+          <div class="team-player-row">
+            <select class="player-select" id="team-${i}-p1" style="appearance:auto;-webkit-appearance:auto;">${opts}</select>
+            <select class="player-select" id="team-${i}-p2" style="appearance:auto;-webkit-appearance:auto;">${opts}</select>
+          </div>
+        </div>`;
+    }
+  }
+  el.innerHTML=html;
+
+  // update games hint
+  const maxGames = numTeams*(numTeams-1)/2;
+  const hint=document.getElementById('tourney-games-hint');
+  let hintText = `Full group-stage round-robin for ${numTeams} teams = ${maxGames} games (+ 3 for SF1, SF2, Final = ${maxGames+3} total). Enter your desired grand total — group stage games = Total − 3.`;
+  if(numTeams<4){
+    hintText = `⚠️ Minimum 4 teams required — semifinals need 4 qualifiers.`;
+  }
+  hint.textContent = hintText;
+};
+
+// ── ROUND ROBIN FIXTURE GENERATOR (Circle Method) ────────
+function generateRoundRobin(teamIds){
+  let arr=teamIds.slice();
+  const hasBye = arr.length % 2 !== 0;
+  if(hasBye) arr.push(null); // bye placeholder
+  const n=arr.length;
+  const numRounds=n-1;
+  const half=n/2;
+  const rounds=[]; // array of arrays of [teamA, teamB]
+
+  let current=arr.slice();
+  for(let r=0;r<numRounds;r++){
+    const roundFixtures=[];
+    for(let i=0;i<half;i++){
+      const home=current[i], away=current[n-1-i];
+      if(home!==null && away!==null){
+        roundFixtures.push([home,away]);
+      }
+    }
+    rounds.push(roundFixtures);
+    // rotate: keep first element fixed, rotate the rest
+    const fixed=current[0];
+    const rest=current.slice(1);
+    rest.unshift(rest.pop());
+    current=[fixed,...rest];
+  }
+  return rounds; // array of rounds, each round is array of [teamA,teamB]
+}
+
+// Build a flat, balanced fixture list of exactly `totalGames` length
+function buildFixtureList(teamIds, totalGames){
+  const rounds=generateRoundRobin(teamIds);
+  const numR=rounds.length;
+  const fullSequence=[]; // flatten round by round
+  rounds.forEach((roundFixtures,rIdx)=>{
+    roundFixtures.forEach(pair=>fullSequence.push({pair,round:rIdx+1}));
+  });
+
+  const fullCount=fullSequence.length;
+  let result=[];
+
+  if(totalGames<=fullCount){
+    result=fullSequence.slice(0,totalGames);
+  } else {
+    // repeat the sequence, alternating home/away on repeats for fairness
+    let cycle=0;
+    while(result.length<totalGames){
+      const remaining=totalGames-result.length;
+      const take=Math.min(fullCount,remaining);
+      for(let i=0;i<take;i++){
+        const item=fullSequence[i];
+        const pair = cycle%2===0 ? item.pair : [item.pair[1],item.pair[0]];
+        result.push({pair, round: cycle*numR+item.round});
+      }
+      cycle++;
+    }
+  }
+  return result;
+}
+
+// ── CREATE TOURNAMENT ─────────────────────────────────────
+window.createTournament=async function(){
+  if(!db){showToast('Not connected!',true);return;}
+  const name=document.getElementById('tourney-name').value.trim();
+  const numTeams=parseInt(document.getElementById('tourney-num-teams').value)||0;
+  const totalGames=parseInt(document.getElementById('tourney-total-games').value)||0;
+
+  if(!name){showToast('Enter a tournament name!',true);return;}
+  if(numTeams<4){showToast('Need at least 4 teams — 2 for each semifinal!',true);return;}
+  if(totalGames<4){showToast('Total games must be at least 4 (1 group game + SF1 + SF2 + Final)!',true);return;}
+
+  const groupGames = totalGames - 3; // reserve 3 for SF1, SF2, Final
+
+  const teams=[];
+  const allPlayersUsed=[];
+
+  for(let i=0;i<numTeams;i++){
+    if(tourneyMode==='singles'){
+      const p1=document.getElementById(`team-${i}-p1`).value;
+      if(!p1){showToast(`Select a player for Team ${i+1}!`,true);return;}
+      if(allPlayersUsed.includes(p1)){showToast(`${p1} is already in another team!`,true);return;}
+      allPlayersUsed.push(p1);
+      teams.push({id:'team'+i, name:p1, players:[p1]});
+    } else {
+      const tname=document.getElementById(`team-${i}-name`).value.trim() || `Team ${i+1}`;
+      const p1=document.getElementById(`team-${i}-p1`).value;
+      const p2=document.getElementById(`team-${i}-p2`).value;
+      if(!p1||!p2){showToast(`Select both players for Team ${i+1}!`,true);return;}
+      if(p1===p2){showToast(`Team ${i+1}: players must be different!`,true);return;}
+      if(allPlayersUsed.includes(p1)||allPlayersUsed.includes(p2)){showToast(`A player in Team ${i+1} is already in another team!`,true);return;}
+      allPlayersUsed.push(p1,p2);
+      teams.push({id:'team'+i, name:tname, players:[p1,p2]});
+    }
+  }
+
+  const teamIds=teams.map(t=>t.id);
+  const fixtureList=buildFixtureList(teamIds, groupGames);
+
+  const fixtures=fixtureList.map((f,idx)=>({
+    id:'fx'+idx,
+    stage:'group',
+    round:f.round,
+    teamA:f.pair[0],
+    teamB:f.pair[1],
+    scoreA:null, scoreB:null,
+    played:false, confirmed:false, loggedBy:null
+  }));
+
+  // ── PLAYOFF FIXTURES (auto-populated once group stage completes) ──
+  fixtures.push({
+    id:'sf1', stage:'semifinal', label:'Semifinal 1',
+    teamA:null, teamB:null,
+    scoreA:null, scoreB:null,
+    played:false, confirmed:false, loggedBy:null
+  });
+  fixtures.push({
+    id:'sf2', stage:'semifinal', label:'Semifinal 2',
+    teamA:null, teamB:null,
+    scoreA:null, scoreB:null,
+    played:false, confirmed:false, loggedBy:null
+  });
+  fixtures.push({
+    id:'final', stage:'final', label:'Final',
+    teamA:null, teamB:null,
+    scoreA:null, scoreB:null,
+    played:false, confirmed:false, loggedBy:null
+  });
+
+  try {
+    const docRef = await addDoc(collection(db,'tournaments'),{
+      name, mode:tourneyMode, teams, totalGames, fixtures,
+      createdAt:new Date().toISOString()
+    });
+    showToast('🏆 Tournament created! '+fixtureList.length+' group games + semifinals + final');
+    selectedTourneyId=docRef.id;
+    // reset form
+    document.getElementById('tourney-name').value='';
+    switchTourneyTab('fixtures');
+  } catch(e){ showToast('Error: '+e.message,true); }
+};
+
+// ── TOURNAMENT SELECTORS ──────────────────────────────────
+function refreshTourneySelects(){
+  const opts = tournaments.length
+    ? tournaments.map(t=>`<option value="${t.id}">${t.name} (${t.mode==='doubles'?'Doubles':'Singles'})</option>`).join('')
+    : '<option value="">No tournaments yet — create one!</option>';
+
+  const selF=document.getElementById('tourney-select-fixtures');
+  const selP=document.getElementById('tourney-select-points');
+  if(selF){
+    const prev=selF.value;
+    selF.innerHTML=opts;
+    if(tournaments.find(t=>t.id===prev)) selF.value=prev;
+    else if(tournaments.length) selF.value=tournaments[0].id;
+  }
+  if(selP){
+    const prev=selP.value;
+    selP.innerHTML=opts;
+    if(tournaments.find(t=>t.id===prev)) selP.value=prev;
+    else if(tournaments.length) selP.value=tournaments[0].id;
+  }
+
+  if(!selectedTourneyId && tournaments.length) selectedTourneyId=tournaments[0].id;
+  if(selF && selF.value) selectedTourneyId=selF.value;
+
+  renderFixtures();
+  renderPointsTable();
+  renderFixtureSheet();
+}
+
+window.onTourneySelect=function(){
+  selectedTourneyId=document.getElementById('tourney-select-fixtures').value;
+  const pSel=document.getElementById('tourney-select-points');
+  if(pSel) pSel.value=selectedTourneyId;
+  renderFixtures();
+  renderPointsTable();
+  renderFixtureSheet();
+};
+
+window.onTourneySelectPoints=function(){
+  selectedTourneyId=document.getElementById('tourney-select-points').value;
+  const fSel=document.getElementById('tourney-select-fixtures');
+  if(fSel) fSel.value=selectedTourneyId;
+  renderFixtures();
+  renderPointsTable();
+  renderFixtureSheet();
+};
+
+function getSelectedTournament(){
+  return tournaments.find(t=>t.id===selectedTourneyId);
+}
+
+function teamLabel(t, teamId){
+  const team=t.teams.find(tm=>tm.id===teamId);
+  if(!team) return '—';
+  const dot=`<span class="pdot" style="background:${colorFor(team.players[0])}"></span>`;
+  return t.mode==='doubles'
+    ? `<div style="display:flex;align-items:center;justify-content:center;">${dot}${team.name}</div><div style="font-size:10px;color:var(--muted);font-weight:500;margin-top:2px;">${team.players.join(' & ')}</div>`
+    : `<div style="display:flex;align-items:center;justify-content:center;">${dot}${team.name}</div>`;
+}
+function teamShortName(t, teamId){
+  const team=t.teams.find(tm=>tm.id===teamId);
+  return team ? team.name : '—';
+}
+
+// ── FIXTURE CARD RENDERER (shared by list + playoffs) ────
+function renderFixtureCard(t, f, cu){
+  const teamAObj=t.teams.find(tm=>tm.id===f.teamA);
+  const teamBObj=t.teams.find(tm=>tm.id===f.teamB);
+
+  if(f.teamA===null || f.teamB===null){
+    // TBD placeholder (playoff slot not yet determined)
+    const label = f.stage==='final' ? 'Awaiting semifinal results' : 'Awaiting group stage results';
+    return `
+      <div class="fixture-card" style="opacity:0.6;">
+        <div class="fixture-teams">
+          <div class="fixture-team">TBD</div>
+          <div class="fixture-vs">VS</div>
+          <div class="fixture-team">TBD</div>
+        </div>
+        <div style="text-align:center; font-size:11px; color:var(--muted); padding-top:4px;">⏳ ${label}</div>
+      </div>`;
+  }
+
+  const teamAInvolved = teamAObj && teamAObj.players.includes(cu);
+  const teamBInvolved = teamBObj && teamBObj.players.includes(cu);
+  const inMatch = teamAInvolved || teamBInvolved;
+
+  if(!f.played){
+    return `
+      <div class="fixture-card">
+        <div class="fixture-teams">
+          <div class="fixture-team">${teamLabel(t,f.teamA)}</div>
+          <div class="fixture-vs">VS</div>
+          <div class="fixture-team">${teamLabel(t,f.teamB)}</div>
+        </div>
+        <div class="fixture-score-inputs">
+          <input type="number" class="score-input" id="fx-${f.id}-a" placeholder="0" min="0" max="99" style="font-size:18px;padding:8px;"/>
+          <div class="score-dash">—</div>
+          <input type="number" class="score-input" id="fx-${f.id}-b" placeholder="0" min="0" max="99" style="font-size:18px;padding:8px;"/>
+        </div>
+        <button class="btn btn-primary btn-full btn-sm" onclick="logTourneyMatch('${f.id}')">📤 Submit Result</button>
+      </div>`;
+  } else if(!f.confirmed){
+    const canConfirm = inMatch && cu!==f.loggedBy;
+    const aWon=f.scoreA>f.scoreB;
+    return `
+      <div class="fixture-card">
+        <div class="fixture-teams">
+          <div class="fixture-team ${aWon?'winner':''}">${teamLabel(t,f.teamA)}</div>
+          <div class="fixture-vs">VS</div>
+          <div class="fixture-team ${!aWon?'winner':''}">${teamLabel(t,f.teamB)}</div>
+        </div>
+        <div class="fixture-score-display" style="margin-bottom:10px;">${f.scoreA} — ${f.scoreB}</div>
+        <div class="fixture-status-row">
+          <span class="pending-badge">⏳ Pending</span>
+          ${canConfirm
+            ? `<button class="confirm-btn" onclick="confirmTourneyMatch('${f.id}')">✅ Confirm</button>`
+            : inMatch ? `<span style="font-size:11px;color:var(--muted);">Waiting for opponent</span>`
+                      : `<span style="font-size:11px;color:var(--muted);">Awaiting confirmation</span>`}
+        </div>
+      </div>`;
+  } else {
+    const aWon=f.scoreA>f.scoreB;
+    return `
+      <div class="fixture-card">
+        <div class="fixture-teams">
+          <div class="fixture-team ${aWon?'winner':''}">${teamLabel(t,f.teamA)}</div>
+          <div class="fixture-vs">VS</div>
+          <div class="fixture-team ${!aWon?'winner':''}">${teamLabel(t,f.teamB)}</div>
+        </div>
+        <div class="fixture-score-display" style="margin-bottom:8px;">${f.scoreA} — ${f.scoreB}</div>
+        <div class="fixture-status-row">
+          <span class="confirmed-badge">✅ Confirmed</span>
+          <div class="match-winner-tag">🏆 <span>${aWon?teamShortName(t,f.teamA):teamShortName(t,f.teamB)}</span></div>
+        </div>
+      </div>`;
+  }
+}
+
+// ── RENDER FIXTURES (LIST VIEW) ───────────────────────────
+function renderFixtures(){
+  const el=document.getElementById('fixtures-list');
+  const delBtn=document.getElementById('delete-tourney-btn');
+  if(!el) return;
+  const t=getSelectedTournament();
+  if(!t){
+    el.innerHTML='<div class="no-data"><div class="icon">🏆</div>No tournament selected.<br>Create one in the Create tab!</div>';
+    if(delBtn) delBtn.style.display='none';
+    return;
+  }
+  if(delBtn) delBtn.style.display='block';
+
+  const cu=localStorage.getItem('badminton_identity')||'';
+  const groupFixtures=(t.fixtures||[]).filter(f=>f.stage==='group');
+  const sf1=(t.fixtures||[]).find(f=>f.id==='sf1');
+  const sf2=(t.fixtures||[]).find(f=>f.id==='sf2');
+  const final=(t.fixtures||[]).find(f=>f.id==='final');
+
+  // group fixtures by round
+  const byRound={};
+  groupFixtures.forEach(f=>{
+    if(!byRound[f.round]) byRound[f.round]=[];
+    byRound[f.round].push(f);
+  });
+
+  let html='';
+  Object.keys(byRound).sort((a,b)=>a-b).forEach(round=>{
+    html+=`<div class="fixture-round-label">Round ${round}</div>`;
+    byRound[round].forEach(f=> html+=renderFixtureCard(t,f,cu));
+  });
+
+  // playoffs
+  html+=`<div class="playoff-section-label">🏆 Playoffs</div>`;
+  if(sf1){
+    html+=`<div class="fixture-round-label" style="border-color:var(--gold);color:var(--gold);">Semifinal 1</div>`+renderFixtureCard(t,sf1,cu);
+  }
+  if(sf2){
+    html+=`<div class="fixture-round-label" style="border-color:var(--gold);color:var(--gold);">Semifinal 2</div>`+renderFixtureCard(t,sf2,cu);
+  }
+  if(final){
+    html+=`<div class="fixture-round-label" style="border-color:var(--gold);color:var(--gold);">Final</div>`+renderFixtureCard(t,final,cu);
+  }
+
+  el.innerHTML=html || '<div class="no-data"><div class="icon">🏸</div>No fixtures generated.</div>';
+}
+
+// ── FIXTURE VIEW TOGGLE ───────────────────────────────────
+window.switchFixtureView=function(view){
+  document.getElementById('fview-sheet').classList.toggle('active', view==='sheet');
+  document.getElementById('fview-list').classList.toggle('active', view==='list');
+  document.getElementById('fview-bracket').classList.toggle('active', view==='bracket');
+  document.getElementById('fixtures-sheet-view').style.display = view==='sheet' ? 'block':'none';
+  document.getElementById('fixtures-list-view').style.display = view==='list' ? 'block':'none';
+  document.getElementById('fixtures-bracket-view').style.display = view==='bracket' ? 'block':'none';
+  if(view==='bracket') renderBracket();
+  if(view==='sheet') renderFixtureSheet();
+};
+
+// ── FIXTURE SHEET (infographic-style view) ────────────────
+const SHEET_COLORS = ["#e74c3c","#3498db","#2ecc71","#f39c12","#9b59b6","#1abc9c","#e67e22","#34495e"];
+
+function renderFixtureSheet(){
+  const el=document.getElementById('sheet-container');
+  if(!el) return;
+  const t=getSelectedTournament();
+  if(!t){
+    el.innerHTML='<div class="no-data"><div class="icon">🗂️</div>No tournament selected.<br>Create one in the Create tab!</div>';
+    return;
+  }
+
+  const groupFixtures=(t.fixtures||[]).filter(f=>f.stage==='group').sort((a,b)=>a.round-b.round);
+  const sf1=(t.fixtures||[]).find(f=>f.id==='sf1');
+  const sf2=(t.fixtures||[]).find(f=>f.id==='sf2');
+  const final=(t.fixtures||[]).find(f=>f.id==='final');
+  const totalMatches=(t.fixtures||[]).length;
+
+  // assign each team a sheet color
+  const teamColor={};
+  t.teams.forEach((team,i)=>{ teamColor[team.id]=SHEET_COLORS[i % SHEET_COLORS.length]; });
+
+  function chip(teamId){
+    if(teamId===null) return `<span class="sheet-team-chip" style="background:#555;">TBD</span>`;
+    const team=t.teams.find(tm=>tm.id===teamId);
+    if(!team) return '—';
+    return `<span class="sheet-team-chip" style="background:${teamColor[teamId]};">${team.name}</span>`;
+  }
+
+  function statusOf(f){
+    if(!f.played) return `<span class="sheet-status-cell upcoming">⏳ Upcoming</span>`;
+    if(!f.confirmed) return `<span class="sheet-status-cell pending">⚠️ Pending</span>`;
+    return `<span class="sheet-status-cell done">✅ Done</span>`;
+  }
+  function scoreOf(f){
+    if(!f.played) return '—';
+    return `<span class="sheet-score-cell">${f.scoreA} – ${f.scoreB}</span>`;
+  }
+
+  // ── BANNER ──
+  let html=`
+    <div class="sheet-banner">
+      <div class="sheet-banner-title">🏸 ${t.name}</div>
+      <div class="sheet-banner-sub">${t.teams.length}-TEAM ${t.mode==='doubles'?'DOUBLES':'SINGLES'} TOURNAMENT &nbsp;–&nbsp; TOTAL <span>${totalMatches} MATCHES</span></div>
+    </div>`;
+
+  // ── LEAGUE STAGE ──
+  html+=`<div class="sheet-section-header">League Stage (Round Robin)</div>`;
+  html+=`<div class="sheet-section-body">`;
+  html+=`<div class="sheet-section-note">Each team plays the schedule below. Top 4 teams qualify for the Semifinals.</div>`;
+  html+=`<table class="sheet-table"><thead><tr>
+      <th>#</th><th>Fixture</th><th>Score</th><th>Status</th>
+    </tr></thead><tbody>`;
+  groupFixtures.forEach((f,idx)=>{
+    html+=`<tr>
+      <td class="sheet-match-num">${idx+1}</td>
+      <td><div class="sheet-fixture-cell">${chip(f.teamA)}<span class="sheet-vs-text">VS</span>${chip(f.teamB)}</div></td>
+      <td>${scoreOf(f)}</td>
+      <td>${statusOf(f)}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table>`;
+
+  // Points system + Teams legend
+  html+=`<div class="sheet-info-grid">`;
+  html+=`<div class="sheet-info-card">
+      <div class="sheet-info-header">Points System</div>
+      <div class="sheet-info-body">
+        <div class="sheet-info-row" style="color:var(--accent);font-weight:700;">🏆 Win = 2 points</div>
+        <div class="sheet-info-row" style="color:var(--warn);font-weight:700;">❌ Loss = 0 points</div>
+      </div>
+    </div>`;
+  html+=`<div class="sheet-info-card">
+      <div class="sheet-info-header">Teams</div>
+      <div class="sheet-info-body">`;
+  t.teams.forEach(team=>{
+    html+=`<div class="sheet-team-legend-row"><span class="sw" style="background:${teamColor[team.id]}"></span>${team.name}</div>`;
+  });
+  html+=`</div></div></div>`;
+  html+=`</div>`; // end sheet-section-body (league)
+
+  // ── KNOCKOUT STAGE ──
+  html+=`<div class="sheet-section-header knockout">Knockout Stage (Top 4 Teams)</div>`;
+  html+=`<div class="sheet-section-body">`;
+  html+=`<div class="sheet-knockout-flow">`;
+
+  // Semifinals card
+  html+=`<div class="sheet-ko-card" style="min-width:190px;">
+      <div class="sheet-ko-card-header">Semifinals</div>
+      <div class="sheet-ko-match-label">Match: SF1</div>
+      <div class="sheet-ko-vs-row">
+        <div class="sheet-ko-slot" style="background:${sf1.teamA?teamColor[sf1.teamA]:'var(--bg)'};color:${sf1.teamA?'#fff':'var(--muted)'};border-color:transparent;">${sf1.teamA?teamShortName(t,sf1.teamA):'1st Place'}</div>
+        <span style="font-size:9px;color:var(--muted);">vs</span>
+        <div class="sheet-ko-slot" style="background:${sf1.teamB?teamColor[sf1.teamB]:'var(--bg)'};color:${sf1.teamB?'#fff':'var(--muted)'};border-color:transparent;">${sf1.teamB?teamShortName(t,sf1.teamB):'4th Place'}</div>
+      </div>
+      ${sf1.played?`<div style="text-align:center;font-size:11px;font-weight:800;color:var(--gold);margin-top:2px;">${sf1.scoreA} – ${sf1.scoreB}</div>`:''}
+      <div class="sheet-ko-match-label" style="margin-top:8px;">Match: SF2</div>
+      <div class="sheet-ko-vs-row">
+        <div class="sheet-ko-slot" style="background:${sf2.teamA?teamColor[sf2.teamA]:'var(--bg)'};color:${sf2.teamA?'#fff':'var(--muted)'};border-color:transparent;">${sf2.teamA?teamShortName(t,sf2.teamA):'2nd Place'}</div>
+        <span style="font-size:9px;color:var(--muted);">vs</span>
+        <div class="sheet-ko-slot" style="background:${sf2.teamB?teamColor[sf2.teamB]:'var(--bg)'};color:${sf2.teamB?'#fff':'var(--muted)'};border-color:transparent;">${sf2.teamB?teamShortName(t,sf2.teamB):'3rd Place'}</div>
+      </div>
+      ${sf2.played?`<div style="text-align:center;font-size:11px;font-weight:800;color:var(--gold);margin-top:2px;">${sf2.scoreA} – ${sf2.scoreB}</div>`:''}
+    </div>`;
+
+  html+=`<div class="sheet-ko-arrow">➜</div>`;
+
+  // Final card
+  const finalReady=final.teamA!==null && final.teamB!==null;
+  html+=`<div class="sheet-ko-card">
+      <div class="sheet-ko-card-header final-header">🏆 Final</div>
+      <div class="sheet-ko-match-label">Match: Final</div>
+      <div class="sheet-ko-vs-row">
+        <div class="sheet-ko-slot" style="background:${finalReady?teamColor[final.teamA]:'var(--bg)'};color:${finalReady?'#fff':'var(--muted)'};border-color:transparent;">${finalReady?teamShortName(t,final.teamA):'Winner SF1'}</div>
+        <span style="font-size:9px;color:var(--muted);">vs</span>
+        <div class="sheet-ko-slot" style="background:${finalReady?teamColor[final.teamB]:'var(--bg)'};color:${finalReady?'#fff':'var(--muted)'};border-color:transparent;">${finalReady?teamShortName(t,final.teamB):'Winner SF2'}</div>
+      </div>
+      ${final.played?`<div style="text-align:center;font-size:11px;font-weight:800;color:var(--gold);margin-top:2px;">${final.scoreA} – ${final.scoreB}</div>`:''}
+    </div>`;
+
+  if(final.confirmed){
+    const championId = final.scoreA>final.scoreB ? final.teamA : final.teamB;
+    html+=`<div class="sheet-ko-arrow">🏆</div>`;
+    html+=`<div class="sheet-ko-card" style="border-color:var(--gold);">
+        <div class="sheet-ko-card-header" style="background:var(--gold);color:#1a1300;">Champion</div>
+        <div style="text-align:center;font-family:'Syne',sans-serif;font-weight:900;font-size:14px;color:var(--gold);padding:6px 0;">${teamShortName(t,championId)}</div>
+      </div>`;
+  }
+
+  html+=`</div>`; // end knockout flow
+  html+=`</div>`; // end sheet-section-body (knockout)
+
+  // ── SUMMARY ──
+  html+=`<div class="sheet-section-header" style="background:var(--card2);color:var(--text);">Tournament Summary</div>`;
+  html+=`<div class="sheet-section-body">
+      <table class="sheet-summary-table">
+        <tr><td>League Stage (Round Robin)</td><td>${groupFixtures.length}</td></tr>
+        <tr><td>Semifinals</td><td>2</td></tr>
+        <tr><td>Final</td><td>1</td></tr>
+        <tr class="total"><td>TOTAL MATCHES</td><td>${totalMatches}</td></tr>
+      </table>
+    </div>`;
+
+  el.innerHTML=html;
+}
+
+// ── BRACKET (FLOWCHART) VIEW ──────────────────────────────
+function bmatchRow(t, teamId, score, isWinner, played){
+  if(teamId===null) return `<div class="bmatch-row"><div class="bname" style="color:var(--muted);">TBD</div></div>`;
+  const team=t.teams.find(tm=>tm.id===teamId);
+  const name=team?team.name:'—';
+  const dotColor = team ? colorFor(team.players[0]) : '#888';
+  const sub = t.mode==='doubles' && team ? `<div class="bsub">${team.players.join(' & ')}</div>` : '';
+  const scoreHtml = played
+    ? `<div class="bscore">${score}</div>`
+    : `<div class="bscore tbd-score">–</div>`;
+  return `
+    <div>
+      <div class="bmatch-row ${isWinner?'winner':''}">
+        <div class="bname"><span class="pdot" style="background:${dotColor}"></span><span class="bname-text">${name}</span></div>
+        ${scoreHtml}
+      </div>
+      ${sub}
+    </div>`;
+}
+
+function bmatchCard(t, f, shortLabel){
+  const ready = f.teamA!==null && f.teamB!==null;
+  const played = ready && f.played;
+  const confirmed = played && f.confirmed;
+  const aWon = played ? f.scoreA>f.scoreB : null;
+  let cls='';
+  if(!ready) cls='tbd';
+  else if(confirmed) cls='decided';
+  else if(played) cls='pending-card';
+
+  let pendingTag='';
+  if(played && !confirmed){
+    pendingTag = `<div class="bmatch-pending-tag">⏳ Awaiting confirmation</div>`;
+  }
+
+  return `
+    <div class="bmatch-card ${cls}">
+      <div class="bmatch-date"><span>${shortLabel}</span>${confirmed?'<span style="color:var(--accent)">✅</span>':''}</div>
+      ${bmatchRow(t, f.teamA, played?f.scoreA:null, aWon===true, played)}
+      ${bmatchRow(t, f.teamB, played?f.scoreB:null, aWon===false, played)}
+      ${pendingTag}
+    </div>`;
+}
+
+// SVG bracket connector — fixed 196px height matches .bracket-col-sf
+// SF1 center ≈ 40px, SF2 center ≈ 156px, merge at center 98px
+function bracketConnectorSVG(){
+  return `
+    <svg viewBox="0 0 34 196" preserveAspectRatio="none" style="width:34px;height:196px;display:block;">
+      <path d="M 0 40 H 17 V 98 H 34" stroke="var(--border2)" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M 0 156 H 17 V 98" stroke="var(--border2)" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <circle cx="17" cy="98" r="2.5" fill="var(--accent2)"/>
+    </svg>`;
+}
+
+function renderBracket(){
+  const el=document.getElementById('bracket-container');
+  if(!el) return;
+  const t=getSelectedTournament();
+  if(!t){
+    el.innerHTML='<div class="no-data"><div class="icon">🌳</div>No tournament selected.</div>';
+    return;
+  }
+  const sf1=(t.fixtures||[]).find(f=>f.id==='sf1');
+  const sf2=(t.fixtures||[]).find(f=>f.id==='sf2');
+  const final=(t.fixtures||[]).find(f=>f.id==='final');
+  if(!sf1||!sf2||!final){
+    el.innerHTML='<div class="no-data"><div class="icon">🌳</div>Bracket not available for this tournament.</div>';
+    return;
+  }
+
+  let html=`<div class="bracket-scroll"><div class="bracket-h">`;
+
+  // SF column
+  html+=`<div class="bracket-col-sf">`;
+  html+=`<div><div class="bracket-round-pill">Semifinal 1</div>${bmatchCard(t, sf1, 'SF1')}</div>`;
+  html+=`<div><div class="bracket-round-pill">Semifinal 2</div>${bmatchCard(t, sf2, 'SF2')}</div>`;
+  html+=`</div>`;
+
+  // Connector
+  html+=`<div class="bracket-connector">${bracketConnectorSVG()}</div>`;
+
+  // Final column
+  html+=`<div class="bracket-col-final">`;
+  html+=`<div><div class="bracket-round-pill gold">🏆 Final</div>${bmatchCard(t, final, 'FINAL')}</div>`;
+  html+=`</div>`;
+
+  html+=`</div></div>`; // end bracket-h, bracket-scroll
+
+  // Champion section
+  const finalAWon = final.played ? final.scoreA>final.scoreB : null;
+  html+=`<div class="champion-wrap">`;
+  html+=`<div class="champion-connector"><div class="line"></div><div class="arrow">↓</div></div>`;
+  if(final.confirmed){
+    const championId = finalAWon ? final.teamA : final.teamB;
+    const champTeam=t.teams.find(tm=>tm.id===championId);
+    html+=`
+      <div class="bracket-box champion">
+        <div class="champion-trophy">🏆</div>
+        <div class="champion-label">Champion</div>
+        <div class="champion-name">${champTeam?champTeam.name:'—'}</div>
+        ${t.mode==='doubles' && champTeam ? `<div class="champion-players">${champTeam.players.join(' & ')}</div>` : ''}
+      </div>`;
+  } else {
+    html+=`
+      <div class="bracket-box champion tbd">
+        <div style="font-size:28px;margin-bottom:4px;">🏆</div>
+        <div style="font-size:12px;color:var(--muted);">Champion TBD</div>
+      </div>`;
+  }
+  html+=`</div>`;
+
+  el.innerHTML=html;
+}
+
+// ── LOG / CONFIRM TOURNAMENT MATCH ────────────────────────
+window.logTourneyMatch=async function(fixtureId){
+  const t=getSelectedTournament();
+  if(!t) return;
+  const sa=parseInt(document.getElementById(`fx-${fixtureId}-a`).value);
+  const sb=parseInt(document.getElementById(`fx-${fixtureId}-b`).value);
+  if(isNaN(sa)||isNaN(sb)){showToast('Enter both scores!',true);return;}
+  if(sa===sb){showToast('Scores cannot be equal!',true);return;}
+
+  const cu=localStorage.getItem('badminton_identity')||'';
+  const fixtures=t.fixtures.map(f=>{
+    if(f.id===fixtureId){
+      return {...f, scoreA:sa, scoreB:sb, played:true, confirmed:false, loggedBy:cu};
+    }
+    return f;
+  });
+
+  try {
+    await setDoc(doc(db,'tournaments',t.id), {fixtures}, {merge:true});
+    showToast('📤 Result submitted! Waiting for confirmation.');
+  } catch(e){ showToast('Error: '+e.message,true); }
+};
+
+window.confirmTourneyMatch=async function(fixtureId){
+  const t=getSelectedTournament();
+  if(!t) return;
+  let fixtures=t.fixtures.map(f=>f.id===fixtureId ? {...f, confirmed:true} : f);
+  fixtures=progressPlayoffs(t, fixtures);
+  try {
+    await setDoc(doc(db,'tournaments',t.id), {fixtures}, {merge:true});
+    showToast('✅ Result confirmed!');
+  } catch(e){ showToast('Error: '+e.message,true); }
+};
+
+// ── PLAYOFF PROGRESSION ───────────────────────────────────
+// Computes group-stage standings and populates SF1/SF2 once group stage
+// is fully confirmed, and populates Final once both SFs are confirmed.
+function computeStandings(t, fixtures){
+  const stats={};
+  t.teams.forEach(team=>{ stats[team.id]={pf:0,pa:0,pts:0}; });
+  fixtures.filter(f=>f.stage==='group' && f.confirmed).forEach(f=>{
+    const s=stats[f.teamA], s2=stats[f.teamB];
+    if(!s||!s2) return;
+    s.pf+=f.scoreA; s.pa+=f.scoreB;
+    s2.pf+=f.scoreB; s2.pa+=f.scoreA;
+    if(f.scoreA>f.scoreB) s.pts+=2; else s2.pts+=2;
+  });
+  return t.teams
+    .map(team=>({id:team.id, pts:stats[team.id].pts, diff:stats[team.id].pf-stats[team.id].pa, pf:stats[team.id].pf}))
+    .sort((a,b)=> b.pts-a.pts || b.diff-a.diff || b.pf-a.pf);
+}
+
+function progressPlayoffs(t, fixtures){
+  const groupFixtures=fixtures.filter(f=>f.stage==='group');
+  const groupDone = groupFixtures.length>0 && groupFixtures.every(f=>f.confirmed);
+
+  const sf1=fixtures.find(f=>f.id==='sf1');
+  const sf2=fixtures.find(f=>f.id==='sf2');
+  const final=fixtures.find(f=>f.id==='final');
+
+  // Populate semifinals once group stage is fully confirmed
+  if(groupDone && sf1 && sf2 && sf1.teamA===null){
+    const standings=computeStandings(t, fixtures);
+    if(standings.length>=4){
+      sf1.teamA=standings[0].id; sf1.teamB=standings[3].id;
+      sf2.teamA=standings[1].id; sf2.teamB=standings[2].id;
+    }
+  }
+
+  // Populate final once both semifinals are confirmed
+  if(sf1 && sf2 && final && final.teamA===null && sf1.confirmed && sf2.confirmed){
+    const sf1Winner = sf1.scoreA>sf1.scoreB ? sf1.teamA : sf1.teamB;
+    const sf2Winner = sf2.scoreA>sf2.scoreB ? sf2.teamA : sf2.teamB;
+    final.teamA=sf1Winner;
+    final.teamB=sf2Winner;
+  }
+
+  return fixtures;
+}
+
+// ── DELETE TOURNAMENT ─────────────────────────────────────
+window.deleteTournament=async function(){
+  const t=getSelectedTournament();
+  if(!t) return;
+  if(!confirm(`Delete tournament "${t.name}"? This cannot be undone.`)) return;
+  requireAdminPass(async ()=>{
+    try {
+      await deleteDoc(doc(db,'tournaments',t.id));
+      selectedTourneyId=null;
+      showToast('Tournament deleted');
+    } catch(e){ showToast('Error: '+e.message,true); }
+  }, {message:`Enter the admin password to delete "${t.name}".`});
+};
+
+// ── POINTS TABLE ──────────────────────────────────────────
+function renderPointsTable(){
+  const el=document.getElementById('points-table-container');
+  if(!el) return;
+  const t=getSelectedTournament();
+  if(!t){
+    el.innerHTML='<div class="no-data"><div class="icon">🏆</div>No tournament selected.</div>';
+    return;
+  }
+
+  const stats={};
+  t.teams.forEach(team=>{ stats[team.id]={played:0,won:0,lost:0,pf:0,pa:0,pts:0}; });
+
+  (t.fixtures||[]).forEach(f=>{
+    if(f.stage && f.stage!=='group') return; // playoffs don't count towards group points table
+    if(!f.confirmed) return;
+    const s=stats[f.teamA], s2=stats[f.teamB];
+    if(!s||!s2) return;
+    s.played++; s2.played++;
+    s.pf+=f.scoreA; s.pa+=f.scoreB;
+    s2.pf+=f.scoreB; s2.pa+=f.scoreA;
+    if(f.scoreA>f.scoreB){ s.won++; s.pts+=2; s2.lost++; }
+    else { s2.won++; s2.pts+=2; s.lost++; }
+  });
+
+  const rows=t.teams.map(team=>{
+    const s=stats[team.id];
+    return {
+      name:team.name,
+      players: t.mode==='doubles' ? team.players.join(' & ') : '',
+      played:s.played, won:s.won, lost:s.lost,
+      pf:s.pf, pa:s.pa, diff:s.pf-s.pa, pts:s.pts
+    };
+  }).sort((a,b)=> b.pts-a.pts || b.diff-a.diff || b.pf-a.pf);
+
+  let html=`
+    <table class="points-table">
+      <thead>
+        <tr>
+          <th>Team</th>
+          <th>P</th><th>W</th><th>L</th>
+          <th>PF</th><th>PA</th><th>+/-</th>
+          <th>Pts</th>
+        </tr>
+      </thead>
+      <tbody>`;
+  rows.forEach((r,i)=>{
+    const rankCls = i===0?'rank1':i===1?'rank2':i===2?'rank3':'';
+    html+=`
+      <tr class="${rankCls}">
+        <td>${r.name}${r.players?`<br><span style="font-size:10px;color:var(--muted);font-weight:500;">${r.players}</span>`:''}</td>
+        <td>${r.played}</td><td>${r.won}</td><td>${r.lost}</td>
+        <td>${r.pf}</td><td>${r.pa}</td><td>${r.diff>0?'+':''}${r.diff}</td>
+        <td class="pts-cell">${r.pts}</td>
+      </tr>`;
+  });
+  html+='</tbody></table>';
+  if(!t.fixtures || !t.fixtures.length){
+    html+='<div class="no-data"><div class="icon">📭</div>No fixtures yet.</div>';
+  }
+  el.innerHTML=html;
+}
+
+
 (async function init(){
   const FIREBASE_CONFIG={
     apiKey:"AIzaSyB2k6O_5EJNt9QeUG0xXFw4tc1CoKb5tMk",
@@ -1938,6 +3698,8 @@ window.renderH2H=function(){
   const r=localStorage.getItem('rate');
   if(r){rate=parseFloat(r);}
   document.getElementById('rate-display-record').textContent=rate;
+
+  renderTeamInputs();
 
   setFbStatus(false);
   await connectFirebase(FIREBASE_CONFIG);
