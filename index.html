@@ -2026,6 +2026,11 @@
       </select>
     </div>
 
+    <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+      <button class="btn btn-ghost btn-sm" id="manage-teams-btn" onclick="toggleManageTeams()">🎨 Manage Teams</button>
+    </div>
+    <div id="manage-teams-panel" style="display:none; margin-bottom:14px;"></div>
+
     <div class="mode-toggle" style="margin-bottom:14px;">
       <button id="fview-sheet" class="active" onclick="switchFixtureView('sheet')">🗂️ Sheet</button>
       <button id="fview-list" onclick="switchFixtureView('list')">📋 List</button>
@@ -2910,7 +2915,7 @@ window.renderTeamInputs=function(){
   // update games hint
   const maxGames = numTeams*(numTeams-1)/2;
   const hint=document.getElementById('tourney-games-hint');
-  let hintText = `Full group-stage round-robin for ${numTeams} teams = ${maxGames} games (+ 3 for SF1, SF2, Final = ${maxGames+3} total). Enter your desired grand total — group stage games = Total − 3.`;
+  let hintText = `1 full round-robin for ${numTeams} teams = ${maxGames} games (+3 for SF1, SF2, Final = ${maxGames+3} total). For fairness, your total auto-snaps to the nearest multiple of ${maxGames} group games — e.g. ${maxGames+3}, ${maxGames*2+3}, ${maxGames*3+3}...`;
   if(numTeams<4){
     hintText = `⚠️ Minimum 4 teams required — semifinals need 4 qualifiers.`;
   }
@@ -2946,35 +2951,176 @@ function generateRoundRobin(teamIds){
   return rounds; // array of rounds, each round is array of [teamA,teamB]
 }
 
-// Build a flat, balanced fixture list of exactly `totalGames` length
-function buildFixtureList(teamIds, totalGames){
-  const rounds=generateRoundRobin(teamIds);
-  const numR=rounds.length;
-  const fullSequence=[]; // flatten round by round
-  rounds.forEach((roundFixtures,rIdx)=>{
-    roundFixtures.forEach(pair=>fullSequence.push({pair,round:rIdx+1}));
-  });
+// Reorders a flat list of matches (single round-robin cycle) so that no team
+// plays back-to-back wherever avoidable. When a back-to-back is truly
+// unavoidable (happens with some odd team counts), it's assigned to whichever
+// team currently has the FEWEST back-to-backs, keeping the "burden" spread
+// as evenly as possible across all teams.
+// Generates all permutations of an array — used for exhaustive search on
+// small match counts where finding the true mathematical optimum is feasible.
+// Scores an ordering by how FAIRLY back-to-back matches are distributed.
+// Priority (matching the user's rule):
+//   1. SPREAD — gap between the team with most and least back-to-backs
+//      (0 = everyone perfectly equal). This comes FIRST: equal treatment
+//      for all teams matters more than the raw total.
+//   2. VARIANCE — finer measure of evenness when spread ties.
+//   3. TOTAL — only as a final tiebreaker, prefer fewer overall.
+// If prevPair is given, the first match is also checked against it
+// (handles back-to-back across a cycle boundary).
+function scoreOrdering(seq, allTeams, prevPair){
+  const perTeam={};
+  allTeams.forEach(t=>{ perTeam[t]=0; });
+  let lastPair=prevPair||null;
+  for(let i=0;i<seq.length;i++){
+    if(lastPair){
+      const prevSet=new Set(lastPair);
+      seq[i].pair.forEach(t=>{ if(prevSet.has(t)) perTeam[t]++; });
+    }
+    lastPair=seq[i].pair;
+  }
+  const vals=allTeams.map(t=>perTeam[t]);
+  const total=vals.reduce((a,b)=>a+b,0);
+  const spread=Math.max(...vals)-Math.min(...vals);
+  const mean=total/allTeams.length;
+  const variance=vals.reduce((a,v)=>a+Math.pow(v-mean,2),0);
+  return {total, spread, variance, perTeam};
+}
 
-  const fullCount=fullSequence.length;
-  let result=[];
+function isBetterScore(s, best){
+  if(!best) return true;
+  if(s.spread!==best.spread) return s.spread<best.spread;
+  if(s.variance!==best.variance) return s.variance<best.variance;
+  return s.total<best.total;
+}
 
-  if(totalGames<=fullCount){
-    result=fullSequence.slice(0,totalGames);
-  } else {
-    // repeat the sequence, alternating home/away on repeats for fairness
-    let cycle=0;
-    while(result.length<totalGames){
-      const remaining=totalGames-result.length;
-      const take=Math.min(fullCount,remaining);
-      for(let i=0;i<take;i++){
-        const item=fullSequence[i];
-        const pair = cycle%2===0 ? item.pair : [item.pair[1],item.pair[0]];
-        result.push({pair, round: cycle*numR+item.round});
-      }
-      cycle++;
+// Exhaustive search via recursion WITHOUT materializing all permutations in
+// memory (so it can't blow the heap). Only safe for small match counts.
+// Evaluates every ordering and keeps the fairest per isBetterScore().
+function exhaustiveBestOrder(matches, allTeams, prevPair){
+  let best=null, bestScore=null;
+  const n=matches.length;
+  const used=new Array(n).fill(false);
+  const current=[];
+
+  function recurse(){
+    if(current.length===n){
+      const s=scoreOrdering(current, allTeams, prevPair);
+      if(isBetterScore(s, bestScore)){ bestScore=s; best=current.slice(); }
+      return;
+    }
+    for(let i=0;i<n;i++){
+      if(used[i]) continue;
+      used[i]=true;
+      current.push(matches[i]);
+      recurse();
+      current.pop();
+      used[i]=false;
     }
   }
-  return result;
+  recurse();
+  return best;
+}
+
+// Heuristic local search for larger match counts (exhaustive becomes too
+// slow/expensive beyond ~8 matches). Uses MULTIPLE random restarts, each
+// starting from a fresh greedy schedule then improved via randomized swaps,
+// keeping the fairest ordering found across all restarts. The restarts are
+// what let it escape local optima and reliably find a perfect (spread 0)
+// schedule when one exists.
+function heuristicBestOrder(matches, allTeams, prevPair, restarts=40, iterations=4000){
+  function greedyInit(){
+    const remaining=matches.slice();
+    const seq=[];
+    let lastPair=prevPair||null;
+    while(remaining.length){
+      const justPlayed=lastPair?new Set(lastPair):new Set();
+      const safe=remaining.filter(m=>!justPlayed.has(m.pair[0])&&!justPlayed.has(m.pair[1]));
+      const pool = safe.length ? safe : remaining;
+      const pick = pool[Math.floor(Math.random()*pool.length)];
+      seq.push(pick);
+      remaining.splice(remaining.indexOf(pick),1);
+      lastPair=pick.pair;
+    }
+    return seq;
+  }
+
+  let globalBest=null, globalBestScore=null;
+
+  for(let r=0;r<restarts;r++){
+    let best=greedyInit();
+    let bestScore=scoreOrdering(best, allTeams, prevPair);
+
+    for(let iter=0; iter<iterations; iter++){
+      const candidate=best.slice();
+      const i=Math.floor(Math.random()*candidate.length);
+      const j=Math.floor(Math.random()*candidate.length);
+      [candidate[i],candidate[j]]=[candidate[j],candidate[i]];
+      const s=scoreOrdering(candidate, allTeams, prevPair);
+      if(isBetterScore(s, bestScore)){ best=candidate; bestScore=s; }
+    }
+
+    if(isBetterScore(bestScore, globalBestScore)){ globalBest=best; globalBestScore=bestScore; }
+    // early exit: can't do better than a perfectly even, zero-total schedule
+    if(globalBestScore.spread===0 && globalBestScore.total===0) break;
+  }
+  return globalBest;
+}
+
+function sequenceMatchesWithinCycle(matches, prevPair){
+  const allTeams=[...new Set(matches.flatMap(m=>m.pair))];
+  // Exhaustive search finds the provably fairest ordering and is fast enough
+  // up to 8 matches (8! = 40,320). Beyond that, use randomized local search.
+  if(matches.length<=8){
+    return exhaustiveBestOrder(matches, allTeams, prevPair);
+  }
+  return heuristicBestOrder(matches, allTeams, prevPair);
+}
+
+// Build a flat, balanced fixture list of exactly `totalGames` length
+// Builds a fixture list using ONLY complete rounds of the round-robin.
+// This guarantees every team always plays the exact same number of matches,
+// which is essential for the points table to fairly decide who qualifies.
+// Within each cycle, matches are also sequenced to avoid back-to-back
+// appearances for any team wherever possible.
+// Returns { fixtures, actualGroupGames } — actualGroupGames may differ from
+// the requested count since it snaps to the nearest valid number of complete rounds.
+function buildFixtureList(teamIds, requestedGroupGames){
+  const rounds=generateRoundRobin(teamIds);       // one full round-robin cycle
+  const numR=rounds.length;                        // matches per single full cycle (rounds count)
+  const gamesPerFullCycle=rounds.reduce((a,r)=>a+r.length,0); // total matches in one full round-robin
+
+  // How many complete round-robin cycles fit in the requested count?
+  // Always round to the NEAREST whole cycle count (minimum 1 cycle).
+  let cycles=Math.round(requestedGroupGames/gamesPerFullCycle);
+  if(cycles<1) cycles=1;
+
+  const result=[];
+  let matchOffset=0;
+  let prevCycleLastPair=null; // tracks boundary between cycles, so sequencing
+                               // can also avoid back-to-back ACROSS cycle joins
+
+  for(let c=0;c<cycles;c++){
+    // flatten this cycle's matches (alternating home/away on repeat cycles)
+    const cycleMatches=[];
+    rounds.forEach(roundFixtures=>{
+      roundFixtures.forEach(pair=>{
+        const finalPair = c%2===0 ? pair : [pair[1],pair[0]];
+        cycleMatches.push({pair:finalPair});
+      });
+    });
+    // sequence this cycle to minimize/balance back-to-back matches,
+    // also considering the last match of the PREVIOUS cycle as context
+    // so the join between cycles doesn't create an unaccounted-for back-to-back
+    const sequenced=sequenceMatchesWithinCycle(cycleMatches, prevCycleLastPair);
+    sequenced.forEach((m,i)=>{
+      result.push({pair:m.pair, round: matchOffset+i+1}); // each match becomes its own "round" slot,
+                                                            // since sequencing already orders play
+    });
+    matchOffset+=sequenced.length;
+    prevCycleLastPair = sequenced.length ? sequenced[sequenced.length-1].pair : null;
+  }
+
+  return { fixtures:result, actualGroupGames:result.length, gamesPerFullCycle };
 }
 
 // ── CREATE TOURNAMENT ─────────────────────────────────────
@@ -2992,6 +3138,7 @@ window.createTournament=async function(){
 
   const teams=[];
   const allPlayersUsed=[];
+  const defaultColors=["#e74c3c","#3498db","#2ecc71","#f39c12","#9b59b6","#1abc9c","#e67e22","#34495e","#d63384","#20c997","#fd7e14","#6610f2"];
 
   for(let i=0;i<numTeams;i++){
     if(tourneyMode==='singles'){
@@ -2999,7 +3146,7 @@ window.createTournament=async function(){
       if(!p1){showToast(`Select a player for Team ${i+1}!`,true);return;}
       if(allPlayersUsed.includes(p1)){showToast(`${p1} is already in another team!`,true);return;}
       allPlayersUsed.push(p1);
-      teams.push({id:'team'+i, name:p1, players:[p1]});
+      teams.push({id:'team'+i, name:p1, players:[p1], color:defaultColors[i%defaultColors.length]});
     } else {
       const tname=document.getElementById(`team-${i}-name`).value.trim() || `Team ${i+1}`;
       const p1=document.getElementById(`team-${i}-p1`).value;
@@ -3008,12 +3155,12 @@ window.createTournament=async function(){
       if(p1===p2){showToast(`Team ${i+1}: players must be different!`,true);return;}
       if(allPlayersUsed.includes(p1)||allPlayersUsed.includes(p2)){showToast(`A player in Team ${i+1} is already in another team!`,true);return;}
       allPlayersUsed.push(p1,p2);
-      teams.push({id:'team'+i, name:tname, players:[p1,p2]});
+      teams.push({id:'team'+i, name:tname, players:[p1,p2], color:defaultColors[i%defaultColors.length]});
     }
   }
 
   const teamIds=teams.map(t=>t.id);
-  const fixtureList=buildFixtureList(teamIds, groupGames);
+  const { fixtures: fixtureList, actualGroupGames, gamesPerFullCycle } = buildFixtureList(teamIds, groupGames);
 
   const fixtures=fixtureList.map((f,idx)=>({
     id:'fx'+idx,
@@ -3046,11 +3193,16 @@ window.createTournament=async function(){
   });
 
   try {
+    const actualTotalGames = actualGroupGames + 3; // + SF1, SF2, Final
     const docRef = await addDoc(collection(db,'tournaments'),{
-      name, mode:tourneyMode, teams, totalGames, fixtures,
+      name, mode:tourneyMode, teams, totalGames:actualTotalGames, fixtures,
       createdAt:new Date().toISOString()
     });
-    showToast('🏆 Tournament created! '+fixtureList.length+' group games + semifinals + final');
+    if(actualTotalGames!==totalGames){
+      showToast(`🏆 Created! Adjusted to ${actualGroupGames} balanced group games (+ SF + Final = ${actualTotalGames} total) so every team plays equally.`);
+    } else {
+      showToast('🏆 Tournament created! '+actualGroupGames+' group games + semifinals + final');
+    }
     selectedTourneyId=docRef.id;
     // reset form
     document.getElementById('tourney-name').value='';
@@ -3094,6 +3246,8 @@ window.onTourneySelect=function(){
   renderFixtures();
   renderPointsTable();
   renderFixtureSheet();
+  const panel=document.getElementById('manage-teams-panel');
+  if(panel && panel.style.display==='block') renderManageTeams();
 };
 
 window.onTourneySelectPoints=function(){
@@ -3109,10 +3263,14 @@ function getSelectedTournament(){
   return tournaments.find(t=>t.id===selectedTourneyId);
 }
 
+function teamColorOf(t, teamId){
+  const team=t.teams.find(tm=>tm.id===teamId);
+  return team && team.color ? team.color : colorFor(team ? team.players[0] : 'x');
+}
 function teamLabel(t, teamId){
   const team=t.teams.find(tm=>tm.id===teamId);
   if(!team) return '—';
-  const dot=`<span class="pdot" style="background:${colorFor(team.players[0])}"></span>`;
+  const dot=`<span class="pdot" style="background:${teamColorOf(t,teamId)}"></span>`;
   return t.mode==='doubles'
     ? `<div style="display:flex;align-items:center;justify-content:center;">${dot}${team.name}</div><div style="font-size:10px;color:var(--muted);font-weight:500;margin-top:2px;">${team.players.join(' & ')}</div>`
     : `<div style="display:flex;align-items:center;justify-content:center;">${dot}${team.name}</div>`;
@@ -3121,6 +3279,59 @@ function teamShortName(t, teamId){
   const team=t.teams.find(tm=>tm.id===teamId);
   return team ? team.name : '—';
 }
+
+// ── MANAGE TEAMS (rename + recolor, anytime) ──────────────
+window.toggleManageTeams=function(){
+  const panel=document.getElementById('manage-teams-panel');
+  const btn=document.getElementById('manage-teams-btn');
+  const isOpen=panel.style.display==='block';
+  panel.style.display=isOpen?'none':'block';
+  btn.textContent=isOpen?'🎨 Manage Teams':'✕ Close';
+  if(!isOpen) renderManageTeams();
+};
+
+function renderManageTeams(){
+  const panel=document.getElementById('manage-teams-panel');
+  if(!panel) return;
+  const t=getSelectedTournament();
+  if(!t){
+    panel.innerHTML='<div class="no-data" style="padding:16px;"><div class="icon">🎨</div>Select a tournament first.</div>';
+    return;
+  }
+  panel.innerHTML = `
+    <div class="match-form">
+      <h3>🎨 Edit Teams — ${t.name}</h3>
+      ${t.teams.map(team=>`
+        <div class="team-row" style="display:flex; align-items:center; gap:10px;">
+          <input type="color" value="${team.color||'#888888'}" onchange="updateTeamColor('${team.id}', this.value)" style="width:38px; height:38px; border:none; border-radius:8px; cursor:pointer; flex-shrink:0; background:none; padding:0;"/>
+          <input type="text" class="team-name-input" value="${team.name}" id="edit-team-name-${team.id}" style="margin-bottom:0; flex:1;" onblur="updateTeamName('${team.id}', this.value)" onkeydown="if(event.key==='Enter') this.blur()"/>
+        </div>
+      `).join('')}
+      <p style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center;">Tap the color swatch to pick any color. Tap a name to rename — changes save automatically.</p>
+    </div>`;
+}
+
+window.updateTeamColor=async function(teamId, newColor){
+  const t=getSelectedTournament();
+  if(!t) return;
+  const teams=t.teams.map(team=> team.id===teamId ? {...team, color:newColor} : team);
+  try {
+    await setDoc(doc(db,'tournaments',t.id), {teams}, {merge:true});
+    showToast('🎨 Team color updated');
+  } catch(e){ showToast('Error: '+e.message, true); }
+};
+
+window.updateTeamName=async function(teamId, newName){
+  const t=getSelectedTournament();
+  if(!t) return;
+  const trimmed=newName.trim();
+  if(!trimmed){ showToast('Team name cannot be empty!', true); renderManageTeams(); return; }
+  const teams=t.teams.map(team=> team.id===teamId ? {...team, name:trimmed} : team);
+  try {
+    await setDoc(doc(db,'tournaments',t.id), {teams}, {merge:true});
+    showToast('✏️ Team name updated');
+  } catch(e){ showToast('Error: '+e.message, true); }
+};
 
 // ── FIXTURE CARD RENDERER (shared by list + playoffs) ────
 function renderFixtureCard(t, f, cu){
@@ -3225,7 +3436,7 @@ function renderFixtures(){
 
   let html='';
   Object.keys(byRound).sort((a,b)=>a-b).forEach(round=>{
-    html+=`<div class="fixture-round-label">Round ${round}</div>`;
+    html+=`<div class="fixture-round-label">Match ${round}</div>`;
     byRound[round].forEach(f=> html+=renderFixtureCard(t,f,cu));
   });
 
@@ -3274,9 +3485,9 @@ function renderFixtureSheet(){
   const final=(t.fixtures||[]).find(f=>f.id==='final');
   const totalMatches=(t.fixtures||[]).length;
 
-  // assign each team a sheet color
+  // use each team's own assigned color (set during creation or via Manage Teams)
   const teamColor={};
-  t.teams.forEach((team,i)=>{ teamColor[team.id]=SHEET_COLORS[i % SHEET_COLORS.length]; });
+  t.teams.forEach((team,i)=>{ teamColor[team.id]=team.color || SHEET_COLORS[i % SHEET_COLORS.length]; });
 
   function chip(teamId){
     if(teamId===null) return `<span class="sheet-team-chip" style="background:#555;">TBD</span>`;
@@ -3407,7 +3618,7 @@ function bmatchRow(t, teamId, score, isWinner, played){
   if(teamId===null) return `<div class="bmatch-row"><div class="bname" style="color:var(--muted);">TBD</div></div>`;
   const team=t.teams.find(tm=>tm.id===teamId);
   const name=team?team.name:'—';
-  const dotColor = team ? colorFor(team.players[0]) : '#888';
+  const dotColor = team ? (team.color || colorFor(team.players[0])) : '#888';
   const sub = t.mode==='doubles' && team ? `<div class="bsub">${team.players.join(' & ')}</div>` : '';
   const scoreHtml = played
     ? `<div class="bscore">${score}</div>`
