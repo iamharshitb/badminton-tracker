@@ -1086,6 +1086,10 @@
     font-weight: 900;
     color: var(--gold);
     text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
   }
   .fixture-score-inputs {
     display: grid;
@@ -1561,6 +1565,17 @@
     cursor: pointer;
     white-space: nowrap;
   }
+  .sheet-reset-btn {
+    background: none;
+    border: none;
+    color: var(--border2);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 2px 4px;
+    margin-left: 4px;
+    transition: color 0.15s;
+  }
+  .sheet-reset-btn:hover { color: var(--warn); }
 
   .sheet-info-grid {
     display: grid;
@@ -3458,7 +3473,9 @@ function renderFixtureCard(t, f, cu){
           <div class="fixture-vs">VS</div>
           <div class="fixture-team ${!aWon?'winner':''}">${teamLabel(t,f.teamB)}</div>
         </div>
-        <div class="fixture-score-display" style="margin-bottom:10px;">${f.scoreA} — ${f.scoreB}</div>
+        <div class="fixture-score-display" style="margin-bottom:10px;">${f.scoreA} — ${f.scoreB}
+          <button class="session-delete" onclick="resetTourneyMatch('${f.id}')" title="Delete score">🗑</button>
+        </div>
         <div class="fixture-status-row">
           <span class="pending-badge">⏳ Pending</span>
           ${canConfirm
@@ -3476,7 +3493,9 @@ function renderFixtureCard(t, f, cu){
           <div class="fixture-vs">VS</div>
           <div class="fixture-team ${!aWon?'winner':''}">${teamLabel(t,f.teamB)}</div>
         </div>
-        <div class="fixture-score-display" style="margin-bottom:8px;">${f.scoreA} — ${f.scoreB}</div>
+        <div class="fixture-score-display" style="margin-bottom:8px;">${f.scoreA} — ${f.scoreB}
+          <button class="session-delete" onclick="resetTourneyMatch('${f.id}')" title="Delete score">🗑</button>
+        </div>
         <div class="fixture-status-row">
           <span class="confirmed-badge">✅ Confirmed</span>
           <div class="match-winner-tag">🏆 <span>${aWon?teamShortName(t,f.teamA):teamShortName(t,f.teamB)}</span></div>
@@ -3605,7 +3624,7 @@ function renderFixtureSheet(){
           <button class="sheet-submit-btn" onclick="logTourneyMatchFromSheet('${f.id}')">📤</button>
         </div>`;
     }
-    return `<span class="sheet-score-cell">${f.scoreA} – ${f.scoreB}</span>`;
+    return `<span class="sheet-score-cell">${f.scoreA} – ${f.scoreB}</span><button class="sheet-reset-btn" onclick="resetTourneyMatch('${f.id}')" title="Delete score">🗑</button>`;
   }
 
   // ── BANNER ──
@@ -3667,14 +3686,16 @@ function renderFixtureSheet(){
           <button class="sheet-submit-btn" onclick="logTourneyMatchFromSheet('${f.id}')">📤</button>
         </div>`;
     }
+    const deleteRow=`<div style="text-align:center;margin-top:4px;"><button class="sheet-reset-btn" onclick="resetTourneyMatch('${f.id}')" title="Delete score">🗑 Delete score</button></div>`;
     if(!f.confirmed){
       const isScorer = t.scorer && cu===t.scorer;
       const canConfirm = isScorer || (isInMatch(f) && cu!==f.loggedBy);
-      return canConfirm
+      return (canConfirm
         ? `<div style="text-align:center;margin-top:4px;"><button class="sheet-confirm-btn" onclick="confirmTourneyMatch('${f.id}')">✅ Confirm</button></div>`
-        : `<div style="text-align:center;font-size:10px;color:var(--gold);margin-top:4px;">⚠️ Pending confirmation</div>`;
+        : `<div style="text-align:center;font-size:10px;color:var(--gold);margin-top:4px;">⚠️ Pending confirmation</div>`)
+        + deleteRow;
     }
-    return '';
+    return deleteRow;
   }
 
   // Semifinals card
@@ -3944,6 +3965,40 @@ function progressPlayoffs(t, fixtures){
 
   return fixtures;
 }
+
+// ── RESET (DELETE) A TOURNAMENT MATCH SCORE ───────────────
+// Clears a submitted result back to "not played" so it can be re-entered
+// correctly. Password-protected since it's destructive. If the fixture being
+// reset is a semifinal whose result already fed into the Final's slots, the
+// Final is also reset back to TBD so the bracket never shows a stale matchup.
+window.resetTourneyMatch=function(fixtureId){
+  const t=getSelectedTournament();
+  if(!t) return;
+  requireAdminPass(async ()=>{
+    try {
+      let fixtures=t.fixtures.map(f=>{
+        if(f.id===fixtureId){
+          return {...f, scoreA:null, scoreB:null, played:false, confirmed:false, loggedBy:null};
+        }
+        return f;
+      });
+
+      // Cascade: if resetting a semifinal, also clear the Final if it had
+      // already been populated from these semifinal results.
+      if(fixtureId==='sf1' || fixtureId==='sf2'){
+        fixtures=fixtures.map(f=>{
+          if(f.id==='final' && f.teamA!==null){
+            return {...f, teamA:null, teamB:null, scoreA:null, scoreB:null, played:false, confirmed:false, loggedBy:null};
+          }
+          return f;
+        });
+      }
+
+      await setDoc(doc(db,'tournaments',t.id), {fixtures}, {merge:true});
+      showToast('🗑 Score reset — ready to re-enter');
+    } catch(e){ showToast('Error: '+e.message,true); }
+  }, {message:'Enter the admin password to delete this match score.'});
+};
 
 // ── DELETE TOURNAMENT ─────────────────────────────────────
 window.deleteTournament=async function(){
