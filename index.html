@@ -1519,6 +1519,49 @@
   .sheet-status-cell.pending { color: var(--gold); }
   .sheet-status-cell.upcoming { color: var(--muted); }
 
+  .sheet-score-entry {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .sheet-score-input {
+    width: 32px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 4px 2px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    outline: none;
+  }
+  .sheet-score-input:focus { border-color: var(--gold); }
+  .sheet-score-entry span { color: var(--muted); font-size: 11px; flex-shrink: 0; }
+  .sheet-submit-btn {
+    background: var(--accent2);
+    border: none;
+    border-radius: 5px;
+    padding: 4px 7px;
+    font-size: 11px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .sheet-confirm-btn {
+    background: var(--accent);
+    color: #06210f;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
   .sheet-info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1996,6 +2039,14 @@
       <div class="mode-toggle">
         <button id="tourney-mode-singles" class="active" onclick="setTourneyMode('singles')">🏸 Singles</button>
         <button id="tourney-mode-doubles" onclick="setTourneyMode('doubles')">🏸🏸 Doubles</button>
+      </div>
+
+      <div class="field" style="margin-bottom:14px;">
+        <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:6px;">Scorer (optional)</label>
+        <select id="tourney-scorer" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-family:'Syne',sans-serif; font-size:14px; font-weight:700; outline:none; appearance:auto; -webkit-appearance:auto;">
+          <option value="">None — opponents confirm each other's results</option>
+        </select>
+        <p style="font-size:11px; color:var(--muted); margin-top:6px; line-height:1.5;">The Scorer can log AND approve every result themselves — no opponent confirmation needed. Useful for one trusted person managing the whole tournament.</p>
       </div>
 
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
@@ -2890,6 +2941,15 @@ window.renderTeamInputs=function(){
   const el=document.getElementById('team-inputs');
   const opts='<option value="">Select player...</option>'+players.map(p=>`<option value="${p}">${p}</option>`).join('');
 
+  // populate scorer dropdown (preserve current selection if still valid)
+  const scorerSel=document.getElementById('tourney-scorer');
+  if(scorerSel){
+    const prevVal=scorerSel.value;
+    scorerSel.innerHTML=`<option value="">None — opponents confirm each other's results</option>`
+      + players.map(p=>`<option value="${p}">${p}</option>`).join('');
+    if(players.includes(prevVal)) scorerSel.value=prevVal;
+  }
+
   let html='';
   for(let i=0;i<numTeams;i++){
     if(tourneyMode==='singles'){
@@ -3129,6 +3189,7 @@ window.createTournament=async function(){
   const name=document.getElementById('tourney-name').value.trim();
   const numTeams=parseInt(document.getElementById('tourney-num-teams').value)||0;
   const totalGames=parseInt(document.getElementById('tourney-total-games').value)||0;
+  const scorer=document.getElementById('tourney-scorer').value||null;
 
   if(!name){showToast('Enter a tournament name!',true);return;}
   if(numTeams<4){showToast('Need at least 4 teams — 2 for each semifinal!',true);return;}
@@ -3195,7 +3256,7 @@ window.createTournament=async function(){
   try {
     const actualTotalGames = actualGroupGames + 3; // + SF1, SF2, Final
     const docRef = await addDoc(collection(db,'tournaments'),{
-      name, mode:tourneyMode, teams, totalGames:actualTotalGames, fixtures,
+      name, mode:tourneyMode, teams, totalGames:actualTotalGames, fixtures, scorer,
       createdAt:new Date().toISOString()
     });
     if(actualTotalGames!==totalGames){
@@ -3298,6 +3359,8 @@ function renderManageTeams(){
     panel.innerHTML='<div class="no-data" style="padding:16px;"><div class="icon">🎨</div>Select a tournament first.</div>';
     return;
   }
+  const scorerOpts=`<option value="">None — opponents confirm each other's results</option>`
+    + players.map(p=>`<option value="${p}" ${t.scorer===p?'selected':''}>${p}</option>`).join('');
   panel.innerHTML = `
     <div class="match-form">
       <h3>🎨 Edit Teams — ${t.name}</h3>
@@ -3308,6 +3371,10 @@ function renderManageTeams(){
         </div>
       `).join('')}
       <p style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center;">Tap the color swatch to pick any color. Tap a name to rename — changes save automatically.</p>
+
+      <label style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-top:16px; margin-bottom:6px;">📝 Scorer</label>
+      <select id="edit-scorer-select" onchange="updateScorer(this.value)" style="width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-family:'Syne',sans-serif; font-size:14px; font-weight:700; outline:none; appearance:auto; -webkit-appearance:auto;">${scorerOpts}</select>
+      <p style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center;">The Scorer can log AND approve every result themselves, anytime during the tournament.</p>
     </div>`;
 }
 
@@ -3330,6 +3397,15 @@ window.updateTeamName=async function(teamId, newName){
   try {
     await setDoc(doc(db,'tournaments',t.id), {teams}, {merge:true});
     showToast('✏️ Team name updated');
+  } catch(e){ showToast('Error: '+e.message, true); }
+};
+
+window.updateScorer=async function(newScorer){
+  const t=getSelectedTournament();
+  if(!t) return;
+  try {
+    await setDoc(doc(db,'tournaments',t.id), {scorer:newScorer||null}, {merge:true});
+    showToast(newScorer ? `📝 ${newScorer} is now the Scorer` : '📝 Scorer removed');
   } catch(e){ showToast('Error: '+e.message, true); }
 };
 
@@ -3372,7 +3448,8 @@ function renderFixtureCard(t, f, cu){
         <button class="btn btn-primary btn-full btn-sm" onclick="logTourneyMatch('${f.id}')">📤 Submit Result</button>
       </div>`;
   } else if(!f.confirmed){
-    const canConfirm = inMatch && cu!==f.loggedBy;
+    const isScorer = t.scorer && cu===t.scorer;
+    const canConfirm = isScorer || (inMatch && cu!==f.loggedBy);
     const aWon=f.scoreA>f.scoreB;
     return `
       <div class="fixture-card">
@@ -3496,13 +3573,38 @@ function renderFixtureSheet(){
     return `<span class="sheet-team-chip" style="background:${teamColor[teamId]};">${team.name}</span>`;
   }
 
+  const cu=localStorage.getItem('badminton_identity')||'';
+
+  function isInMatch(f){
+    const teamAObj=t.teams.find(tm=>tm.id===f.teamA);
+    const teamBObj=t.teams.find(tm=>tm.id===f.teamB);
+    return (teamAObj && teamAObj.players.includes(cu)) || (teamBObj && teamBObj.players.includes(cu));
+  }
+
   function statusOf(f){
+    if(f.teamA===null || f.teamB===null) return `<span class="sheet-status-cell upcoming">⏳ TBD</span>`;
     if(!f.played) return `<span class="sheet-status-cell upcoming">⏳ Upcoming</span>`;
-    if(!f.confirmed) return `<span class="sheet-status-cell pending">⚠️ Pending</span>`;
+    if(!f.confirmed){
+      const isScorer = t.scorer && cu===t.scorer;
+      const canConfirm = isScorer || (isInMatch(f) && cu!==f.loggedBy);
+      if(canConfirm){
+        return `<button class="sheet-confirm-btn" onclick="confirmTourneyMatch('${f.id}')">✅ Confirm</button>`;
+      }
+      return `<span class="sheet-status-cell pending">⚠️ Pending</span>`;
+    }
     return `<span class="sheet-status-cell done">✅ Done</span>`;
   }
   function scoreOf(f){
-    if(!f.played) return '—';
+    if(f.teamA===null || f.teamB===null) return '—';
+    if(!f.played){
+      return `
+        <div class="sheet-score-entry">
+          <input type="number" class="sheet-score-input" id="sheetfx-${f.id}-a" placeholder="0" min="0" max="99"/>
+          <span>–</span>
+          <input type="number" class="sheet-score-input" id="sheetfx-${f.id}-b" placeholder="0" min="0" max="99"/>
+          <button class="sheet-submit-btn" onclick="logTourneyMatchFromSheet('${f.id}')">📤</button>
+        </div>`;
+    }
     return `<span class="sheet-score-cell">${f.scoreA} – ${f.scoreB}</span>`;
   }
 
@@ -3511,6 +3613,7 @@ function renderFixtureSheet(){
     <div class="sheet-banner">
       <div class="sheet-banner-title">🏸 ${t.name}</div>
       <div class="sheet-banner-sub">${t.teams.length}-TEAM ${t.mode==='doubles'?'DOUBLES':'SINGLES'} TOURNAMENT &nbsp;–&nbsp; TOTAL <span>${totalMatches} MATCHES</span></div>
+      ${t.scorer ? `<div class="sheet-banner-sub" style="margin-top:4px;">📝 Scorer: <span>${t.scorer}</span></div>` : ''}
     </div>`;
 
   // ── LEAGUE STAGE ──
@@ -3553,6 +3656,27 @@ function renderFixtureSheet(){
   html+=`<div class="sheet-section-body">`;
   html+=`<div class="sheet-knockout-flow">`;
 
+  function koAction(f){
+    if(f.teamA===null || f.teamB===null) return '';
+    if(!f.played){
+      return `
+        <div class="sheet-score-entry" style="margin-top:6px;">
+          <input type="number" class="sheet-score-input" id="sheetfx-${f.id}-a" placeholder="0" min="0" max="99"/>
+          <span>–</span>
+          <input type="number" class="sheet-score-input" id="sheetfx-${f.id}-b" placeholder="0" min="0" max="99"/>
+          <button class="sheet-submit-btn" onclick="logTourneyMatchFromSheet('${f.id}')">📤</button>
+        </div>`;
+    }
+    if(!f.confirmed){
+      const isScorer = t.scorer && cu===t.scorer;
+      const canConfirm = isScorer || (isInMatch(f) && cu!==f.loggedBy);
+      return canConfirm
+        ? `<div style="text-align:center;margin-top:4px;"><button class="sheet-confirm-btn" onclick="confirmTourneyMatch('${f.id}')">✅ Confirm</button></div>`
+        : `<div style="text-align:center;font-size:10px;color:var(--gold);margin-top:4px;">⚠️ Pending confirmation</div>`;
+    }
+    return '';
+  }
+
   // Semifinals card
   html+=`<div class="sheet-ko-card" style="min-width:190px;">
       <div class="sheet-ko-card-header">Semifinals</div>
@@ -3563,6 +3687,7 @@ function renderFixtureSheet(){
         <div class="sheet-ko-slot" style="background:${sf1.teamB?teamColor[sf1.teamB]:'var(--bg)'};color:${sf1.teamB?'#fff':'var(--muted)'};border-color:transparent;">${sf1.teamB?teamShortName(t,sf1.teamB):'4th Place'}</div>
       </div>
       ${sf1.played?`<div style="text-align:center;font-size:11px;font-weight:800;color:var(--gold);margin-top:2px;">${sf1.scoreA} – ${sf1.scoreB}</div>`:''}
+      ${koAction(sf1)}
       <div class="sheet-ko-match-label" style="margin-top:8px;">Match: SF2</div>
       <div class="sheet-ko-vs-row">
         <div class="sheet-ko-slot" style="background:${sf2.teamA?teamColor[sf2.teamA]:'var(--bg)'};color:${sf2.teamA?'#fff':'var(--muted)'};border-color:transparent;">${sf2.teamA?teamShortName(t,sf2.teamA):'2nd Place'}</div>
@@ -3570,6 +3695,7 @@ function renderFixtureSheet(){
         <div class="sheet-ko-slot" style="background:${sf2.teamB?teamColor[sf2.teamB]:'var(--bg)'};color:${sf2.teamB?'#fff':'var(--muted)'};border-color:transparent;">${sf2.teamB?teamShortName(t,sf2.teamB):'3rd Place'}</div>
       </div>
       ${sf2.played?`<div style="text-align:center;font-size:11px;font-weight:800;color:var(--gold);margin-top:2px;">${sf2.scoreA} – ${sf2.scoreB}</div>`:''}
+      ${koAction(sf2)}
     </div>`;
 
   html+=`<div class="sheet-ko-arrow">➜</div>`;
@@ -3585,6 +3711,7 @@ function renderFixtureSheet(){
         <div class="sheet-ko-slot" style="background:${finalReady?teamColor[final.teamB]:'var(--bg)'};color:${finalReady?'#fff':'var(--muted)'};border-color:transparent;">${finalReady?teamShortName(t,final.teamB):'Winner SF2'}</div>
       </div>
       ${final.played?`<div style="text-align:center;font-size:11px;font-weight:800;color:var(--gold);margin-top:2px;">${final.scoreA} – ${final.scoreB}</div>`:''}
+      ${koAction(final)}
     </div>`;
 
   if(final.confirmed){
@@ -3729,11 +3856,9 @@ function renderBracket(){
 }
 
 // ── LOG / CONFIRM TOURNAMENT MATCH ────────────────────────
-window.logTourneyMatch=async function(fixtureId){
+async function submitTourneyResult(fixtureId, sa, sb){
   const t=getSelectedTournament();
   if(!t) return;
-  const sa=parseInt(document.getElementById(`fx-${fixtureId}-a`).value);
-  const sb=parseInt(document.getElementById(`fx-${fixtureId}-b`).value);
   if(isNaN(sa)||isNaN(sb)){showToast('Enter both scores!',true);return;}
   if(sa===sb){showToast('Scores cannot be equal!',true);return;}
 
@@ -3749,6 +3874,18 @@ window.logTourneyMatch=async function(fixtureId){
     await setDoc(doc(db,'tournaments',t.id), {fixtures}, {merge:true});
     showToast('📤 Result submitted! Waiting for confirmation.');
   } catch(e){ showToast('Error: '+e.message,true); }
+}
+
+window.logTourneyMatch=async function(fixtureId){
+  const sa=parseInt(document.getElementById(`fx-${fixtureId}-a`).value);
+  const sb=parseInt(document.getElementById(`fx-${fixtureId}-b`).value);
+  await submitTourneyResult(fixtureId, sa, sb);
+};
+
+window.logTourneyMatchFromSheet=async function(fixtureId){
+  const sa=parseInt(document.getElementById(`sheetfx-${fixtureId}-a`).value);
+  const sb=parseInt(document.getElementById(`sheetfx-${fixtureId}-b`).value);
+  await submitTourneyResult(fixtureId, sa, sb);
 };
 
 window.confirmTourneyMatch=async function(fixtureId){
